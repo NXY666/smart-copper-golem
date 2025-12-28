@@ -1,9 +1,11 @@
 package org.example.fabricModTest.coppergolem
 
 import com.google.common.collect.ImmutableMap
+import net.fabricmc.fabric.api.tag.convention.v2.ConventionalItemTags
 import net.minecraft.core.BlockPos
 import net.minecraft.core.GlobalPos
 import net.minecraft.server.level.ServerLevel
+import net.minecraft.tags.ItemTags
 import net.minecraft.world.Container
 import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.PathfinderMob
@@ -72,6 +74,58 @@ class SmartTransportItemsBetweenContainers(
         private const val CLOSE_ENOUGH_TO_START_INTERACTING_WITH_TARGET_DISTANCE = 0.5
         private const val CLOSE_ENOUGH_TO_START_INTERACTING_WITH_TARGET_PATH_END_DISTANCE = 1.0
         private const val CLOSE_ENOUGH_TO_CONTINUE_INTERACTING_WITH_TARGET = 2.0
+
+        /**
+         * 物品匹配模式
+         */
+        enum class ItemMatchMode {
+            /** 完全相同：物品类型和组件（NBT、颜色等）都必须完全相同 */
+            EXACT,
+            /** 物品相同：只比较物品类型，忽略组件差异（如附魔、耐久等） */
+            ITEM_ONLY,
+            /** 类别相同：允许同类物品（如不同颜色的羊毛、不同材质的木板等，通过tag匹配） */
+            CATEGORY
+        }
+
+        /**
+         * 当前使用的物品匹配模式
+         * EXACT - 完全相同才匹配
+         * ITEM_ONLY - 物品类型相同即可（默认，忽略NBT等组件）
+         * CATEGORY - 同类物品即可（最宽松，支持不同颜色/材质）
+         */
+        private val ITEM_MATCH_MODE = ItemMatchMode.CATEGORY
+
+        /**
+         * 允许作为"同类物品"的物品标签
+         * 这些tag中的物品会被视为同一类（如不同颜色的羊毛、不同材质的木板等）
+         */
+        private val ALLOWED_ITEM_CATEGORY_TAGS = setOf(
+            // 原版标签
+            ItemTags.WOOL,                              // 羊毛（不同颜色）
+            ItemTags.PLANKS,                            // 木板（不同材质）
+            ItemTags.WOOL_CARPETS,                      // 地毯（不同颜色）
+            ItemTags.LOGS,                              // 原木（不同材质）
+            ItemTags.TERRACOTTA,                        // 陶瓦（不同颜色）
+            ItemTags.BANNERS,                           // 旗帜（不同颜色）
+            ItemTags.BOATS,                             // 船（不同材质）
+            ItemTags.BUNDLES,                           // 包裹（不同颜色）
+            ItemTags.CANDLES,                           // 蜡烛（不同颜色）
+            ItemTags.BEDS,                              // 床（不同颜色）
+
+            // Fabric Conventional 标签
+            ConventionalItemTags.CONCRETES,             // 混凝土（不同颜色）
+            ConventionalItemTags.CONCRETE_POWDERS,      // 混凝土粉末（不同颜色）
+            ConventionalItemTags.GLAZED_TERRACOTTAS,    // 带釉陶瓦（不同颜色）
+            ConventionalItemTags.SHULKER_BOXES,         // 潜影盒（不同颜色）
+            ConventionalItemTags.GLASS_BLOCKS,          // 玻璃块（不同颜色）
+            ConventionalItemTags.GLASS_PANES,           // 玻璃板（不同颜色）
+            ConventionalItemTags.DYED,                  // 所有染色物品
+
+            // 砂岩系列
+            ConventionalItemTags.SANDSTONE_BLOCKS,      // 砂岩块
+            ConventionalItemTags.SANDSTONE_SLABS,       // 砂岩台阶
+            ConventionalItemTags.SANDSTONE_STAIRS       // 砂岩楼梯
+        )
 
         private val LOGGER = LoggerFactory.getLogger("SmartTransport")
     }
@@ -648,10 +702,49 @@ class SmartTransportItemsBetweenContainers(
     private fun hasItemMatchingHandItem(pathfinderMob: PathfinderMob, container: Container): Boolean {
         val handItem = pathfinderMob.mainHandItem
         for (itemStack in container) {
-            if (ItemStack.isSameItem(itemStack, handItem)) {
+            if (itemsMatch(itemStack, handItem, ITEM_MATCH_MODE)) {
                 return true
             }
         }
+        return false
+    }
+
+    /**
+     * 根据指定模式检查两个物品是否匹配
+     */
+    private fun itemsMatch(item1: ItemStack, item2: ItemStack, mode: ItemMatchMode): Boolean {
+        if (item1.isEmpty || item2.isEmpty) return false
+
+        return when (mode) {
+            ItemMatchMode.EXACT -> {
+                // 完全相同：物品类型和所有组件都相同
+                ItemStack.isSameItemSameComponents(item1, item2)
+            }
+            ItemMatchMode.ITEM_ONLY -> {
+                // 物品相同：只比较物品类型
+                ItemStack.isSameItem(item1, item2)
+            }
+            ItemMatchMode.CATEGORY -> {
+                // 类别相同：先尝试物品类型匹配，再尝试tag匹配
+                ItemStack.isSameItem(item1, item2) || isSameItemCategory(item1, item2)
+            }
+        }
+    }
+
+    /**
+     * 检查两个物品是否属于同一个允许的物品类别
+     * 例如：白色羊毛和灰色羊毛都属于WOOL tag，返回true
+     */
+    private fun isSameItemCategory(item1: ItemStack, item2: ItemStack): Boolean {
+        if (item1.isEmpty || item2.isEmpty) return false
+
+        // 检查是否共享任何一个允许的tag
+        for (tag in ALLOWED_ITEM_CATEGORY_TAGS) {
+            if (item1.`is`(tag) && item2.`is`(tag)) {
+                return true
+            }
+        }
+
         return false
     }
 
@@ -987,31 +1080,34 @@ class SmartTransportItemsBetweenContainers(
     }
 
     private fun addItemsToContainer(pathfinderMob: PathfinderMob, container: Container): ItemStack {
-        val itemStack = pathfinderMob.mainHandItem
+        val mainHandItemStack = pathfinderMob.mainHandItem
 
-        for ((i, itemStack2) in container.withIndex()) {
-            if (itemStack2.isEmpty) {
-                container.setItem(i, itemStack)
+        for ((index, containerItemStack) in container.withIndex()) {
+            if (containerItemStack.isEmpty) {
+                container.setItem(index, mainHandItemStack)
                 return ItemStack.EMPTY
             }
 
-            if (ItemStack.isSameItemSameComponents(
-                    itemStack2,
-                    itemStack
-                ) && itemStack2.count < itemStack2.maxStackSize
-            ) {
-                val j = itemStack2.maxStackSize - itemStack2.count
-                val k = minOf(j, itemStack.count)
-                itemStack2.count += k
-                itemStack.count -= j
-                container.setItem(i, itemStack2)
-                if (itemStack.isEmpty) {
+            // 使用配置的匹配模式检查物品是否可以堆叠
+            // 注意：堆叠时必须至少满足ITEM_ONLY级别（物品类型相同），不能只满足CATEGORY
+            val canStack = when (ITEM_MATCH_MODE) {
+                ItemMatchMode.EXACT -> ItemStack.isSameItemSameComponents(containerItemStack, mainHandItemStack)
+                ItemMatchMode.ITEM_ONLY, ItemMatchMode.CATEGORY -> ItemStack.isSameItem(containerItemStack, mainHandItemStack)
+            }
+
+            if (canStack && containerItemStack.count < containerItemStack.maxStackSize) {
+                val j = containerItemStack.maxStackSize - containerItemStack.count
+                val k = minOf(j, mainHandItemStack.count)
+                containerItemStack.count += k
+                mainHandItemStack.count -= j
+                container.setItem(index, containerItemStack)
+                if (mainHandItemStack.isEmpty) {
                     return ItemStack.EMPTY
                 }
             }
         }
 
-        return itemStack
+        return mainHandItemStack
     }
 
     private fun stopTargetingCurrentTarget(pathfinderMob: PathfinderMob) {
