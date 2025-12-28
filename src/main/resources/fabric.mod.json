@@ -1,0 +1,33 @@
+{
+	"schemaVersion": 1,
+	"id": "fabric-mod-test",
+	"version": "${version}",
+	"name": "fabric-mod-test",
+	"description": "",
+	"authors": [],
+	"contact": {},
+	"license": "AGPL-3.0",
+	"icon": "assets/fabric-mod-test/icon.png",
+	"environment": "server",
+	"entrypoints": {
+		"fabric-datagen": [
+			"org.example.fabricModTest.client.FabricModTestDataGenerator"
+		],
+		"main": [
+			"org.example.fabricModTest.FabricModTest"
+		]
+	},
+	"mixins": [
+		"fabric-mod-test.mixins.json",
+		{
+			"config": "fabric-mod-test.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.18.4",
+		"fabric-language-kotlin": ">=1.13.8+kotlin.2.3.0",
+		"fabric-api": "*",
+		"minecraft": "1.21.11"
+	}
+}
