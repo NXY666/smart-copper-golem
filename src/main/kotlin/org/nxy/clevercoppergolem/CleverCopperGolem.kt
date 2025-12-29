@@ -1,12 +1,11 @@
-package org.example.fabricModTest
+package org.nxy.clevercoppergolem
 
 import net.fabricmc.api.ModInitializer
-import org.example.fabricModTest.coppergolem.ModMemoryModuleTypes
 import org.slf4j.LoggerFactory
 
-class FabricModTest : ModInitializer {
+class CleverCopperGolem : ModInitializer {
     companion object {
-        const val MOD_ID = "fabric-mod-test"
+        const val MOD_ID = "clever-copper-golem"
         private val LOGGER = LoggerFactory.getLogger(MOD_ID)
     }
 

@@ -1,14 +1,15 @@
 {
 	"required": true,
 	"minVersion": "0.8",
-	"package": "org.example.fabricModTest.mixin.client",
+	"package": "org.nxy.clevercoppergolem.mixin",
 	"compatibilityLevel": "JAVA_21",
-	"client": [
+	"mixins": [
+		"CopperGolemAiMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
 	},
 	"overwrites": {
-		"requireAnnotations": true
+		"requireAnnotations": false
 	}
 }

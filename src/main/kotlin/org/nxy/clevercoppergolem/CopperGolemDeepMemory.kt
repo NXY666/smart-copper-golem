@@ -1,9 +1,11 @@
-package org.example.fabricModTest.coppergolem
+package org.nxy.clevercoppergolem
 
 import net.minecraft.core.BlockPos
 import net.minecraft.world.Container
 import net.minecraft.world.item.Item
 import org.slf4j.LoggerFactory
+import kotlin.collections.iterator
+import kotlin.math.abs
 
 /**
  * 铜傀儡的记忆数据结构
@@ -126,9 +128,9 @@ data class CopperGolemDeepMemory(
      */
     fun clearOutOfRangeChests(currentPos: BlockPos, horizontalRange: Int, verticalRange: Int) {
         val chestsToRemove = chestToItems.keys.filter { chestPos ->
-            val dx = kotlin.math.abs(chestPos.x - currentPos.x)
-            val dy = kotlin.math.abs(chestPos.y - currentPos.y)
-            val dz = kotlin.math.abs(chestPos.z - currentPos.z)
+            val dx = abs(chestPos.x - currentPos.x)
+            val dy = abs(chestPos.y - currentPos.y)
+            val dz = abs(chestPos.z - currentPos.z)
             dx > horizontalRange || dy > verticalRange || dz > horizontalRange
         }
 

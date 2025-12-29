@@ -1,4 +1,4 @@
-package org.example.fabricModTest.coppergolem
+package org.nxy.clevercoppergolem
 
 import net.minecraft.core.Registry
 import net.minecraft.core.registries.BuiltInRegistries

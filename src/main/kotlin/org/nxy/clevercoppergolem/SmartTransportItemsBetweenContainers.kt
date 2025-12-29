@@ -1,8 +1,9 @@
-package org.example.fabricModTest.coppergolem
+package org.nxy.clevercoppergolem
 
 import com.google.common.collect.ImmutableMap
 import net.fabricmc.fabric.api.tag.convention.v2.ConventionalItemTags
 import net.minecraft.core.BlockPos
+import net.minecraft.core.Direction
 import net.minecraft.core.GlobalPos
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.tags.ItemTags
@@ -18,6 +19,7 @@ import net.minecraft.world.entity.ai.navigation.GroundPathNavigation
 import net.minecraft.world.item.Item
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.ChunkPos
+import net.minecraft.world.level.ClipContext
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.ChestBlock
 import net.minecraft.world.level.block.ShulkerBoxBlock
@@ -27,6 +29,7 @@ import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.level.block.state.properties.ChestType
 import net.minecraft.world.level.pathfinder.Path
 import net.minecraft.world.phys.AABB
+import net.minecraft.world.phys.HitResult
 import net.minecraft.world.phys.Vec3
 import org.apache.commons.lang3.function.TriConsumer
 import org.slf4j.LoggerFactory
@@ -645,20 +648,20 @@ class SmartTransportItemsBetweenContainers(
         vec3: Vec3
     ): Boolean {
         val center = target.pos.center
-        return net.minecraft.core.Direction.stream()
+        return Direction.stream()
             .map { dir -> center.add(0.5 * dir.stepX, 0.5 * dir.stepY, 0.5 * dir.stepZ) }
             .map { pos ->
                 level.clip(
-                    net.minecraft.world.level.ClipContext(
+                    ClipContext(
                         vec3,
                         pos,
-                        net.minecraft.world.level.ClipContext.Block.COLLIDER,
-                        net.minecraft.world.level.ClipContext.Fluid.NONE,
+                        ClipContext.Block.COLLIDER,
+                        ClipContext.Fluid.NONE,
                         pathfinderMob
                     )
                 )
             }
-            .anyMatch { hit -> hit.type == net.minecraft.world.phys.HitResult.Type.BLOCK && hit.blockPos == target.pos }
+            .anyMatch { hit -> hit.type == HitResult.Type.BLOCK && hit.blockPos == target.pos }
     }
 
     private fun isAnotherMobInteractingWithTarget(target: TransportItemTarget, level: Level): Boolean {

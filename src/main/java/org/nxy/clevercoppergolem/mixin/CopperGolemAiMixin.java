@@ -1,4 +1,4 @@
-package org.example.fabricModTest.mixin;
+package org.nxy.clevercoppergolem.mixin;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -23,9 +23,9 @@ import net.minecraft.world.entity.schedule.Activity;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import org.example.fabricModTest.coppergolem.ContainerHelper;
-import org.example.fabricModTest.coppergolem.ModMemoryModuleTypes;
-import org.example.fabricModTest.coppergolem.SmartTransportItemsBetweenContainers;
+import org.nxy.clevercoppergolem.ContainerHelper;
+import org.nxy.clevercoppergolem.ModMemoryModuleTypes;
+import org.nxy.clevercoppergolem.SmartTransportItemsBetweenContainers;
 import org.jspecify.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
@@ -72,7 +72,7 @@ public abstract class CopperGolemAiMixin {
 			blockState.is(BlockTags.SHULKER_BOXES);
 
 	/**
-	 * @author fabric-mod-test
+	 * @author clever-copper-golem
 	 * @reason 替换 brainProvider 以添加自定义记忆模块
 	 */
 	@Overwrite
@@ -105,7 +105,7 @@ public abstract class CopperGolemAiMixin {
 	}
 
 	/**
-	 * @author fabric-mod-test
+	 * @author clever-copper-golem
 	 * @reason 替换 makeBrain 以使用自定义行为
 	 */
 	@Overwrite

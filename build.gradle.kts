@@ -27,7 +27,7 @@ loom {
     splitEnvironmentSourceSets()
 
     mods {
-        register("fabric-mod-test") {
+        register("clever-copper-golem") {
             sourceSet("main")
             sourceSet("client")
         }
