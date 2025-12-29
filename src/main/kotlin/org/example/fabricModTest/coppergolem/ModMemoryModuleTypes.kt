@@ -15,14 +15,14 @@ object ModMemoryModuleTypes {
      * 铜傀儡的物品箱子索引记忆
      * 存储箱子->物品和物品->箱子的双向映射
      */
-    lateinit var COPPER_GOLEM_ITEM_MEMORY: MemoryModuleType<CopperGolemMemory>
+    lateinit var COPPER_GOLEM_DEEP_MEMORY: MemoryModuleType<CopperGolemDeepMemory>
         private set
 
     fun register(modId: String) {
-        COPPER_GOLEM_ITEM_MEMORY = Registry.register(
+        COPPER_GOLEM_DEEP_MEMORY = Registry.register(
             BuiltInRegistries.MEMORY_MODULE_TYPE,
-            Identifier.fromNamespaceAndPath(modId, "copper_golem_item_memory"),
-            MemoryModuleType<CopperGolemMemory>(Optional.empty())
+            Identifier.fromNamespaceAndPath(modId, "copper_golem_deep_memory"),
+            MemoryModuleType(Optional.empty())
         )
     }
 }

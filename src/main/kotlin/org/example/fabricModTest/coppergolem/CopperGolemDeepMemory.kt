@@ -1,6 +1,7 @@
 package org.example.fabricModTest.coppergolem
 
 import net.minecraft.core.BlockPos
+import net.minecraft.world.Container
 import net.minecraft.world.item.Item
 import org.slf4j.LoggerFactory
 
@@ -9,10 +10,10 @@ import org.slf4j.LoggerFactory
  * 
  * 存储结构：
  * - chestToItems: 箱子位置 -> 该箱子里的物品集合
- * - itemToChest: 物品 -> 第一个记住的包含该物品的箱子位置（不覆盖）
+ * - itemToChest: 物品 -> 最后一个记住的包含该物品的箱子位置（覆盖）
  * - blacklistedItems: 被拉黑的物品 -> 拉黑结束的游戏时间
  */
-data class CopperGolemMemory(
+data class CopperGolemDeepMemory(
     // 箱子位置 -> 该箱子里的物品集合
     private val chestToItems: MutableMap<BlockPos, MutableSet<Item>> = mutableMapOf(),
     // 物品 -> 第一个记住的箱子位置（不覆盖原则）
@@ -30,9 +31,47 @@ data class CopperGolemMemory(
     /**
      * 更新箱子内容的记忆
      * 当翻到一个箱子时，完全刷新关于这个箱子的记忆
+     * 
+     * @param chestPos 箱子位置
+     * @param container 箱子容器
      */
-    fun updateChestMemory(chestPos: BlockPos, items: Set<Item>) {
-        LOGGER.info("[记忆更新] 刷新箱子 $chestPos 的记忆，物品: ${items.map { it.toString() }}")
+    fun updateChestDeepMemory(chestPos: BlockPos, container: Container) {
+        val items = mutableSetOf<Item>()
+        val itemsWithSpace = mutableSetOf<Item>()
+
+        // 是否存在空余槽位
+        var hasEmptySlot = false
+        // 记录“至少有一个未堆叠满的物品堆”的物品集合
+        val itemsWithNonFullStack = mutableSetOf<Item>()
+
+        // 单次扫描容器内容，收集所有需要的信息
+        for (itemStack in container) {
+            if (itemStack.isEmpty) {
+                hasEmptySlot = true
+                continue
+            }
+
+            val item = itemStack.item
+            items.add(item)
+
+            // 记录该物品是否出现过“未堆叠满”的堆
+            val maxStackSize = itemStack.maxStackSize
+            val currentCount = itemStack.count
+            if (currentCount < maxStackSize) {
+                itemsWithNonFullStack.add(item)
+            }
+        }
+
+        // 根据是否存在空槽位来确定哪些物品“有空间”
+        if (hasEmptySlot) {
+            // 有空位时，所有存在于箱子中的物品都还有空间
+            itemsWithSpace.addAll(items)
+        } else {
+            // 无空位时，只有存在未堆叠满堆的物品还有空间
+            itemsWithSpace.addAll(itemsWithNonFullStack)
+        }
+        
+        LOGGER.info("[记忆更新] 刷新箱子 $chestPos 的记忆，物品: ${items.map { it.toString() }}, 有空间: ${itemsWithSpace.map { it.toString() }}")
 
         // 先清除这个箱子之前的记忆
         clearChestMemory(chestPos)
@@ -40,13 +79,16 @@ data class CopperGolemMemory(
         // 记录新的箱子内容
         chestToItems[chestPos] = items.toMutableSet()
 
-        // 对于每个物品，如果之前没有记录过，则记录这个箱子
+        // 对于每个物品，只有在箱子有足够空间时才记录这个箱子（允许覆盖旧记忆）
         for (item in items) {
-            if (!itemToChest.containsKey(item)) {
+            if (item in itemsWithSpace) {
+                val oldChestPos = itemToChest[item]
                 itemToChest[item] = chestPos
-                LOGGER.info("[记忆新增] 物品 $item -> 箱子 $chestPos (首次记忆)")
+                if (oldChestPos != chestPos) {
+                    LOGGER.info("[记忆更新] 物品 $item -> 箱子 $chestPos (以前: $oldChestPos)")
+                }
             } else {
-                LOGGER.debug("[记忆跳过] 物品 $item 已有记忆指向 ${itemToChest[item]}，不覆盖")
+                LOGGER.info("[记忆更新] 物品 $item 在箱子 $chestPos 中无足够空间（已堆叠满），不更新物品→箱子映射")
             }
         }
 

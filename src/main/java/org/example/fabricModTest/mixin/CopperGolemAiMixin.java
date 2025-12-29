@@ -98,7 +98,7 @@ public abstract class CopperGolemAiMixin {
 			MemoryModuleType.VISITED_BLOCK_POSITIONS,
 			MemoryModuleType.UNREACHABLE_TRANSPORT_BLOCK_POSITIONS,
 			MemoryModuleType.DOORS_TO_CLOSE,
-			ModMemoryModuleTypes.INSTANCE.getCOPPER_GOLEM_ITEM_MEMORY() // 自定义记忆模块
+			ModMemoryModuleTypes.INSTANCE.getCOPPER_GOLEM_DEEP_MEMORY() // 自定义记忆模块
 		);
 
 		return Brain.provider(memoryTypes, sensorTypes);
