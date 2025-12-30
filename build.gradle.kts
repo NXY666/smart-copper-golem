@@ -29,14 +29,13 @@ loom {
     mods {
         register("clever-copper-golem") {
             sourceSet("main")
-            sourceSet("client")
         }
     }
 }
 
 fabricApi {
     configureDataGeneration {
-        client = true
+        client = false
     }
 }
 

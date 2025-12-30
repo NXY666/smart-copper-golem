@@ -4,7 +4,6 @@ import net.minecraft.core.BlockPos
 import net.minecraft.world.Container
 import net.minecraft.world.item.Item
 import org.slf4j.LoggerFactory
-import kotlin.collections.iterator
 import kotlin.math.abs
 
 /**
@@ -28,6 +27,28 @@ data class CopperGolemDeepMemory(
         const val BLACKLIST_DURATION_TICKS = 6000L
 
         private val LOGGER = LoggerFactory.getLogger("CopperGolemMemory")
+
+        /**
+         * 判断箱子是否在指定范围内
+         */
+        private fun isChestInRange(
+            chestPos: BlockPos,
+            currentPos: BlockPos,
+            horizontalRange: Int,
+            verticalRange: Int
+        ): Boolean {
+            val dx = abs(chestPos.x - currentPos.x)
+            val dy = abs(chestPos.y - currentPos.y)
+            val dz = abs(chestPos.z - currentPos.z)
+            return dx <= horizontalRange && dy <= verticalRange && dz <= horizontalRange
+        }
+
+        /**
+         * 判断黑名单项是否已过期
+         */
+        private fun isBlacklistExpired(endTime: Long, currentGameTime: Long): Boolean {
+            return currentGameTime >= endTime
+        }
     }
 
     /**
@@ -37,7 +58,7 @@ data class CopperGolemDeepMemory(
      * @param chestPos 箱子位置
      * @param container 箱子容器
      */
-    fun updateChestDeepMemory(chestPos: BlockPos, container: Container) {
+    fun updateChest(chestPos: BlockPos, container: Container) {
         val items = mutableSetOf<Item>()
         val itemsWithSpace = mutableSetOf<Item>()
 
@@ -72,11 +93,11 @@ data class CopperGolemDeepMemory(
             // 无空位时，只有存在未堆叠满堆的物品还有空间
             itemsWithSpace.addAll(itemsWithNonFullStack)
         }
-        
+
         LOGGER.info("[记忆更新] 刷新箱子 $chestPos 的记忆，物品: ${items.map { it.toString() }}, 有空间: ${itemsWithSpace.map { it.toString() }}")
 
         // 先清除这个箱子之前的记忆
-        clearChestMemory(chestPos)
+        clearChest(chestPos)
 
         // 记录新的箱子内容
         chestToItems[chestPos] = items.toMutableSet()
@@ -100,7 +121,7 @@ data class CopperGolemDeepMemory(
     /**
      * 清除某个箱子的所有记忆
      */
-    fun clearChestMemory(chestPos: BlockPos) {
+    fun clearChest(chestPos: BlockPos) {
         val oldItems = chestToItems.remove(chestPos) ?: return
 
         LOGGER.info("[记忆清除] 清除箱子 $chestPos 的记忆，原有物品: ${oldItems.map { it.toString() }}")
@@ -109,7 +130,6 @@ data class CopperGolemDeepMemory(
         for (item in oldItems) {
             if (itemToChest[item] == chestPos) {
                 itemToChest.remove(item)
-                LOGGER.debug("[记忆移除] 物品 $item 的箱子映射被移除")
 
                 // 尝试找另一个包含该物品的箱子
                 for ((otherChest, otherItems) in chestToItems) {
@@ -126,12 +146,9 @@ data class CopperGolemDeepMemory(
     /**
      * 清除超出范围的箱子记忆
      */
-    fun clearOutOfRangeChests(currentPos: BlockPos, horizontalRange: Int, verticalRange: Int) {
+    fun clearOutOfRangeChest(currentPos: BlockPos, horizontalRange: Int, verticalRange: Int) {
         val chestsToRemove = chestToItems.keys.filter { chestPos ->
-            val dx = abs(chestPos.x - currentPos.x)
-            val dy = abs(chestPos.y - currentPos.y)
-            val dz = abs(chestPos.z - currentPos.z)
-            dx > horizontalRange || dy > verticalRange || dz > horizontalRange
+            !isChestInRange(chestPos, currentPos, horizontalRange, verticalRange)
         }
 
         if (chestsToRemove.isNotEmpty()) {
@@ -139,78 +156,88 @@ data class CopperGolemDeepMemory(
         }
 
         for (chestPos in chestsToRemove) {
-            clearChestMemory(chestPos)
+            clearChest(chestPos)
         }
+    }
+
+    /**
+     * 检查物品是否有记忆（未被拉黑且存在记忆）
+     * 用于决定是否优先拾取该物品
+     */
+    fun hasChestForItem(item: Item): Boolean {
+        return itemToChest.containsKey(item)
     }
 
     /**
      * 获取某个物品记忆中的目标箱子
      * 如果物品被拉黑或没有记忆，返回null
+     * 
+     * @param item 要查询的物品
+     * @param currentPos 当前位置（用于验证范围）
+     * @param horizontalRange 水平搜索范围
+     * @param verticalRange 垂直搜索范围
      */
-    fun getRememberedChestForItem(item: Item, currentGameTime: Long): BlockPos? {
-        // 检查是否被拉黑
-        if (isItemBlacklisted(item, currentGameTime)) {
-            LOGGER.debug("[记忆查询] 物品 $item 被拉黑，返回null")
+    fun getChestPosForItem(
+        item: Item,
+        currentPos: BlockPos,
+        horizontalRange: Int,
+        verticalRange: Int
+    ): BlockPos? {
+        val chestPos = itemToChest[item] ?: return null
+
+        // 如果提供了位置和范围参数，验证箱子是否在范围内
+        if (!isChestInRange(chestPos, currentPos, horizontalRange, verticalRange)) {
             return null
         }
-        val result = itemToChest[item]
-        if (result != null) {
-            LOGGER.info("[记忆查询] 物品 $item 找到记忆目标箱子: $result")
-        } else {
-            LOGGER.debug("[记忆查询] 物品 $item 没有记忆")
-        }
-        return result
+
+        return chestPos
     }
 
     /**
      * 检查物品是否被拉黑
      */
-    fun isItemBlacklisted(item: Item, currentGameTime: Long): Boolean {
+    fun isItemBlocked(item: Item, currentGameTime: Long): Boolean {
         val blacklistEndTime = blacklistedItems[item] ?: return false
-        if (currentGameTime >= blacklistEndTime) {
+
+        if (isBlacklistExpired(blacklistEndTime, currentGameTime)) {
             blacklistedItems.remove(item)
             LOGGER.info("[黑名单] 物品 $item 黑名单已过期，移除")
             return false
         }
-        val remainingTicks = blacklistEndTime - currentGameTime
-        LOGGER.debug("[黑名单] 物品 $item 仍在黑名单中，剩余 $remainingTicks ticks")
+
         return true
     }
 
     /**
      * 将物品加入黑名单
      */
-    fun blacklistItem(item: Item, currentGameTime: Long) {
+    fun blockItem(item: Item, currentGameTime: Long) {
         blacklistedItems[item] = currentGameTime + BLACKLIST_DURATION_TICKS
         LOGGER.warn("[黑名单] 物品 $item 被加入黑名单，持续 $BLACKLIST_DURATION_TICKS ticks (约5分钟)")
     }
 
     /**
-     * 检查记忆中是否有该物品
+     * 获取当前所有被拉黑的物品集合（自动清理过期项）
      */
-    fun hasMemoryOfItem(item: Item): Boolean {
-        return itemToChest.containsKey(item)
-    }
-
-    /**
-     * 获取所有记忆的箱子位置
-     */
-    fun getAllRememberedChests(): Set<BlockPos> {
-        return chestToItems.keys.toSet()
+    fun getBlockedItems(currentGameTime: Long): Set<Item> {
+        clearExpiredBlacklist(currentGameTime)
+        return blacklistedItems.keys.toSet()
     }
 
     /**
      * 清除所有过期的黑名单
      */
-    fun cleanupExpiredBlacklist(currentGameTime: Long) {
-        blacklistedItems.entries.removeIf { (_, endTime) -> currentGameTime >= endTime }
-    }
-
-    /**
-     * 获取当前所有被拉黑的物品集合（自动清理过期项）
-     */
-    fun getBlacklistedItems(currentGameTime: Long): Set<Item> {
-        cleanupExpiredBlacklist(currentGameTime)
-        return blacklistedItems.keys.toSet()
+    fun clearExpiredBlacklist(currentGameTime: Long) {
+        val expiredItems = mutableListOf<Item>()
+        blacklistedItems.entries.removeIf { (item, endTime) ->
+            val expired = isBlacklistExpired(endTime, currentGameTime)
+            if (expired) {
+                expiredItems.add(item)
+            }
+            expired
+        }
+        if (expiredItems.isNotEmpty()) {
+            LOGGER.info("[黑名单清理] 清除 ${expiredItems.size} 个过期物品: ${expiredItems.map { it.toString() }}")
+        }
     }
 }

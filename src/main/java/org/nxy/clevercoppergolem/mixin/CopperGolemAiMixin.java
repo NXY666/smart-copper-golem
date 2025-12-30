@@ -23,10 +23,10 @@ import net.minecraft.world.entity.schedule.Activity;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import org.jspecify.annotations.Nullable;
 import org.nxy.clevercoppergolem.ContainerHelper;
 import org.nxy.clevercoppergolem.ModMemoryModuleTypes;
 import org.nxy.clevercoppergolem.SmartTransportItemsBetweenContainers;
-import org.jspecify.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Unique;
@@ -190,23 +190,27 @@ public abstract class CopperGolemAiMixin {
 		CopperGolemState copperGolemState,
 		@Nullable SoundEvent soundEvent
 	) {
-		return (pathfinderMob, transportItemTarget, integer) -> {
+		return (pathfinderMob, transportItemTarget, ticksSinceReachingTarget) -> {
 			if (pathfinderMob instanceof CopperGolem copperGolem) {
 				Container container = transportItemTarget.getContainer();
-				if (integer == TICK_TO_START_ON_REACHED_INTERACTION) {
-					ContainerHelper.startOpen(container, copperGolem);
-					copperGolem.setOpenedChestPos(transportItemTarget.getPos());
-					copperGolem.setState(copperGolemState);
-					// 如果打开失败，不设置状态，让行为系统重新寻找目标
-				}
-
-				if (integer == TICK_TO_PLAY_ON_REACHED_SOUND && soundEvent != null) {
-					copperGolem.playSound(soundEvent);
-				}
-
-				if (integer == SmartTransportItemsBetweenContainers.TARGET_INTERACTION_TIME) {
-					ContainerHelper.stopOpen(container, copperGolem);
-					copperGolem.clearOpenedChestPos();
+				switch (ticksSinceReachingTarget) {
+					// 1 tick: 打开容器
+					case TICK_TO_START_ON_REACHED_INTERACTION -> {
+						ContainerHelper.startOpen(container, copperGolem);
+						copperGolem.setOpenedChestPos(transportItemTarget.getPos());
+						copperGolem.setState(copperGolemState);
+					}
+					// 9 ticks: 播放声音
+					case TICK_TO_PLAY_ON_REACHED_SOUND -> {
+						if (soundEvent != null) {
+							copperGolem.playSound(soundEvent);
+						}
+					}
+					// 60 ticks: 关闭容器
+					case SmartTransportItemsBetweenContainers.TARGET_INTERACTION_TIME -> {
+						ContainerHelper.stopOpen(container, copperGolem);
+						copperGolem.clearOpenedChestPos();
+					}
 				}
 			}
 		};
