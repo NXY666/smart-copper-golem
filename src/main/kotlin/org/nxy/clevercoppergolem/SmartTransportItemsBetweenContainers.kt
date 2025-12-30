@@ -74,6 +74,12 @@ class SmartTransportItemsBetweenContainers(
         private const val CLOSE_ENOUGH_TO_CONTINUE_INTERACTING_WITH_TARGET = 2.0
 
         /**
+         * 铜傀儡可以与目标箱子交互的垂直距离
+         * 默认0.5太小，增加到2.0让两格高的铜傀儡可以够到更高的箱子
+         */
+        const val VERTICAL_INTERACTION_REACH = 4.0
+
+        /**
          * 物品匹配模式
          */
         enum class ItemMatchMode {
@@ -283,10 +289,10 @@ class SmartTransportItemsBetweenContainers(
             }
         }
 
-        if (isReturningToSourceBlock(pathfinderMob)) {
-            return scanSourceBlock(serverLevel, pathfinderMob)
+        return if (isReturningToSourceBlock(pathfinderMob)) {
+            scanSourceBlock(serverLevel, pathfinderMob)
         } else {
-            return scanDestinationBlock(serverLevel, pathfinderMob)
+            scanDestinationBlock(serverLevel, pathfinderMob)
         }
     }
 
@@ -617,7 +623,7 @@ class SmartTransportItemsBetweenContainers(
         return target.state
             .getCollisionShape(level, target.pos)
             .bounds()
-            .inflate(distance, 0.5, distance)
+            .inflate(distance, VERTICAL_INTERACTION_REACH - 1.5, distance)
             .move(target.pos)
             .intersects(aabb2)
     }
