@@ -3,7 +3,6 @@ package org.nxy.clevercoppergolem
 import net.minecraft.core.BlockPos
 import net.minecraft.world.Container
 import net.minecraft.world.item.Item
-import org.slf4j.LoggerFactory
 import kotlin.math.abs
 
 /**
@@ -25,8 +24,6 @@ data class CopperGolemDeepMemory(
     companion object {
         // 物品拉黑时长（游戏tick）：大约5分钟
         const val BLACKLIST_DURATION_TICKS = 6000L
-
-        private val LOGGER = LoggerFactory.getLogger("CopperGolemMemory")
 
         /**
          * 判断箱子是否在指定范围内
@@ -94,7 +91,6 @@ data class CopperGolemDeepMemory(
             itemsWithSpace.addAll(itemsWithNonFullStack)
         }
 
-        LOGGER.info("[记忆更新] 刷新箱子 $chestPos 的记忆，物品: ${items.map { it.toString() }}, 有空间: ${itemsWithSpace.map { it.toString() }}")
 
         // 先清除这个箱子之前的记忆
         clearChest(chestPos)
@@ -105,17 +101,9 @@ data class CopperGolemDeepMemory(
         // 对于每个物品，只有在箱子有足够空间时才记录这个箱子（允许覆盖旧记忆）
         for (item in items) {
             if (item in itemsWithSpace) {
-                val oldChestPos = itemToChest[item]
                 itemToChest[item] = chestPos
-                if (oldChestPos != chestPos) {
-                    LOGGER.info("[记忆更新] 物品 $item -> 箱子 $chestPos (以前: $oldChestPos)")
-                }
-            } else {
-                LOGGER.info("[记忆更新] 物品 $item 在箱子 $chestPos 中无足够空间（已堆叠满），不更新物品→箱子映射")
             }
         }
-
-        LOGGER.info("[记忆状态] 当前记忆: ${chestToItems.size}个箱子, ${itemToChest.size}个物品映射")
     }
 
     /**
@@ -123,8 +111,6 @@ data class CopperGolemDeepMemory(
      */
     fun clearChest(chestPos: BlockPos) {
         val oldItems = chestToItems.remove(chestPos) ?: return
-
-        LOGGER.info("[记忆清除] 清除箱子 $chestPos 的记忆，原有物品: ${oldItems.map { it.toString() }}")
 
         // 清除指向这个箱子的物品->箱子映射
         for (item in oldItems) {
@@ -135,7 +121,6 @@ data class CopperGolemDeepMemory(
                 for ((otherChest, otherItems) in chestToItems) {
                     if (item in otherItems) {
                         itemToChest[item] = otherChest
-                        LOGGER.info("[记忆重定向] 物品 $item 重新指向箱子 $otherChest")
                         break
                     }
                 }
@@ -149,10 +134,6 @@ data class CopperGolemDeepMemory(
     fun clearOutOfRangeChest(currentPos: BlockPos, horizontalRange: Int, verticalRange: Int) {
         val chestsToRemove = chestToItems.keys.filter { chestPos ->
             !isChestInRange(chestPos, currentPos, horizontalRange, verticalRange)
-        }
-
-        if (chestsToRemove.isNotEmpty()) {
-            LOGGER.info("[记忆范围清理] 清除 ${chestsToRemove.size} 个超出范围的箱子记忆: $chestsToRemove")
         }
 
         for (chestPos in chestsToRemove) {
@@ -201,7 +182,6 @@ data class CopperGolemDeepMemory(
 
         if (isBlacklistExpired(blacklistEndTime, currentGameTime)) {
             blacklistedItems.remove(item)
-            LOGGER.info("[黑名单] 物品 $item 黑名单已过期，移除")
             return false
         }
 
@@ -213,7 +193,6 @@ data class CopperGolemDeepMemory(
      */
     fun blockItem(item: Item, currentGameTime: Long) {
         blacklistedItems[item] = currentGameTime + BLACKLIST_DURATION_TICKS
-        LOGGER.warn("[黑名单] 物品 $item 被加入黑名单，持续 $BLACKLIST_DURATION_TICKS ticks (约5分钟)")
     }
 
     /**
@@ -228,16 +207,8 @@ data class CopperGolemDeepMemory(
      * 清除所有过期的黑名单
      */
     fun clearExpiredBlacklist(currentGameTime: Long) {
-        val expiredItems = mutableListOf<Item>()
-        blacklistedItems.entries.removeIf { (item, endTime) ->
-            val expired = isBlacklistExpired(endTime, currentGameTime)
-            if (expired) {
-                expiredItems.add(item)
-            }
-            expired
-        }
-        if (expiredItems.isNotEmpty()) {
-            LOGGER.info("[黑名单清理] 清除 ${expiredItems.size} 个过期物品: ${expiredItems.map { it.toString() }}")
+        blacklistedItems.entries.removeIf { (_, endTime) ->
+            isBlacklistExpired(endTime, currentGameTime)
         }
     }
 }

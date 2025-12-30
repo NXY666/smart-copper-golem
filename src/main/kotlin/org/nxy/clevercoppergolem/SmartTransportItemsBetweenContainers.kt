@@ -31,13 +31,11 @@ import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.HitResult
 import net.minecraft.world.phys.Vec3
 import org.apache.commons.lang3.function.TriConsumer
-import org.slf4j.LoggerFactory
 import java.util.*
 import java.util.function.BiConsumer
 import java.util.function.Consumer
 import java.util.function.Predicate
 import java.util.stream.Stream
-import kotlin.math.sqrt
 
 /**
  * 增强版的铜傀儡物品运输行为
@@ -129,8 +127,6 @@ class SmartTransportItemsBetweenContainers(
             ConventionalItemTags.GLASS_PANES,           // 玻璃板（不同颜色）
             ConventionalItemTags.MUSIC_DISCS,            // 音乐唱片（不同种类）
         )
-
-        private val LOGGER = LoggerFactory.getLogger("SmartTransport")
     }
 
     private var target: TransportItemTarget? = null
@@ -232,11 +228,9 @@ class SmartTransportItemsBetweenContainers(
 
         if (isReturningToSourceBlock(pathfinderMob)) {
             // 正在返回铜箱子或手上没有物品，都找不到目标时直接进入冷却
-            LOGGER.warn("[目标更新] 找不到目标，进入冷却")
             enterCooldownWhenCannotReturnToSource(pathfinderMob)
         } else {
             // 手上有物品但找不到目标箱子，转头去搜索铜箱子
-            LOGGER.warn("[目标更新] 找不到目标箱子，返回铜箱子")
             hasTransportFailed = true
             return true
         }
@@ -253,8 +247,6 @@ class SmartTransportItemsBetweenContainers(
     ): Optional<TransportItemTarget> {
         // 坐车时完全使用原版逻辑，不使用记忆加速
         if (pathfinderMob.isPassenger) {
-            LOGGER.info("[目标搜索] 坐车中，使用原版逻辑")
-
             return scanDestinationBlock(serverLevel, pathfinderMob)
         }
 
@@ -265,12 +257,10 @@ class SmartTransportItemsBetweenContainers(
         // 如果手上有物品，检查记忆
         if (!handItem.isEmpty && !isReturningToSourceBlock(pathfinderMob)) {
             val item = handItem.item
-            LOGGER.info("[目标搜索] 手持物品: $item")
 
             // 检查是否被拉黑
             if (memory.isItemBlocked(item, currentGameTime)) {
                 // 物品被拉黑，返回铜箱子
-                LOGGER.info("[目标搜索] 物品 $item 被拉黑，返回铜箱子")
                 hasTransportFailed = true
                 return scanSourceBlock(serverLevel, pathfinderMob)
             }
@@ -283,24 +273,19 @@ class SmartTransportItemsBetweenContainers(
                 getVerticalSearchDistance(pathfinderMob)
             )
             if (rememberedChest != null) {
-                LOGGER.info("[目标搜索] 使用记忆目标: $rememberedChest (物品: $item)")
                 // 验证这个箱子是否仍然有效
                 val targetOpt = createValidTargetByBlockPos(serverLevel, pathfinderMob, rememberedChest)
                 if (targetOpt.isPresent) {
-                    LOGGER.info("[目标搜索] 记忆目标有效，前往 $rememberedChest")
                     return targetOpt
                 }
                 // 如果记忆中的箱子无效，清除该箱子的记忆
-                LOGGER.warn("[目标搜索] 记忆目标 $rememberedChest 无效，清除记忆")
                 memory.clearChest(rememberedChest)
             }
         }
 
         if (isReturningToSourceBlock(pathfinderMob)) {
-            LOGGER.info("[目标搜索] 返回目标铜箱子")
             return scanSourceBlock(serverLevel, pathfinderMob)
         } else {
-            LOGGER.info("[目标搜索] 遍历目标箱子")
             return scanDestinationBlock(serverLevel, pathfinderMob)
         }
     }
@@ -310,18 +295,14 @@ class SmartTransportItemsBetweenContainers(
         pathfinderMob: PathfinderMob,
         chestPos: BlockPos
     ): Optional<TransportItemTarget> {
-        LOGGER.info("[目标验证] 验证记忆容器: $chestPos")
-
         // 先验证范围，避免无效查询
         val aabb = getTargetSearchArea(pathfinderMob)
         if (!aabb.contains(chestPos.x.toDouble(), chestPos.y.toDouble(), chestPos.z.toDouble())) {
-            LOGGER.info("[目标验证] 箱子 $chestPos 超出搜索范围")
             return Optional.empty()
         }
 
         val blockEntity = serverLevel.getBlockEntity(chestPos)
         if (blockEntity !is BaseContainerBlockEntity) {
-            LOGGER.info("[目标验证] 容器 $chestPos 不是有效的容器类型")
             return Optional.empty()
         }
 
@@ -342,7 +323,6 @@ class SmartTransportItemsBetweenContainers(
 
     private fun scanSourceBlock(serverLevel: ServerLevel, pathfinderMob: PathfinderMob): Optional<TransportItemTarget> {
         // 找铜箱子（源箱子）
-        LOGGER.info("[查找铜箱子] 开始查找源箱子")
         val aabb = getTargetSearchArea(pathfinderMob)
         val visitedPositions = getVisitedPositions(pathfinderMob)
         val unreachablePositions = getUnreachablePositions(pathfinderMob)
@@ -374,11 +354,6 @@ class SmartTransportItemsBetweenContainers(
             }
         }
 
-        if (nearestTarget != null) {
-            LOGGER.info("[查找铜箱子] 找到源箱子: ${nearestTarget.pos}")
-        } else {
-            LOGGER.warn("[查找铜箱子] 未找到可用的源箱子")
-        }
         return if (nearestTarget != null) Optional.of(nearestTarget) else Optional.empty()
     }
 
@@ -412,7 +387,6 @@ class SmartTransportItemsBetweenContainers(
         serverLevel: ServerLevel,
         pathfinderMob: PathfinderMob
     ): Optional<TransportItemTarget> {
-        LOGGER.info("[扫描目标] 开始扫描区域内的箱子")
         val aabb = getTargetSearchArea(pathfinderMob)
         val visitedPositions = getVisitedPositions(pathfinderMob)
         val unreachablePositions = getUnreachablePositions(pathfinderMob)
@@ -444,18 +418,6 @@ class SmartTransportItemsBetweenContainers(
             }
         }
 
-        if (nearestTarget != null) {
-            LOGGER.info(
-                "[扫描目标] 找到目标箱子: ${nearestTarget.pos}, 距离: ${
-                    String.format(
-                        "%.2f",
-                        sqrt(nearestDistance)
-                    )
-                }"
-            )
-        } else {
-            LOGGER.info("[扫描目标] 未找到可用目标箱子")
-        }
         return if (nearestTarget != null) Optional.of(nearestTarget) else Optional.empty()
     }
 
@@ -505,12 +467,10 @@ class SmartTransportItemsBetweenContainers(
                     && !isTargetBlocked(level, currentTarget)
 
         if (!isValid) {
-            LOGGER.info("[目标验证] 目标 ${currentTarget.pos} 无效")
             return false
         }
 
         if (state == TransportItemState.TRAVELLING && !isTravellingPathValid(level, currentTarget, pathfinderMob)) {
-            LOGGER.warn("[目标验证] 目标 ${currentTarget.pos} 路径无效，标记为不可达")
             markVisitedBlockPosAsUnreachable(pathfinderMob, level, currentTarget.pos)
             return false
         }
@@ -764,7 +724,6 @@ class SmartTransportItemsBetweenContainers(
 
     private fun onQueuingForTarget(target: TransportItemTarget, level: Level, pathfinderMob: PathfinderMob) {
         if (!isAnotherMobInteractingWithTarget(target, level)) {
-            LOGGER.info("[排队状态] 目标 ${target.pos} 已空闲，恢复移动")
             resumeTravelling(pathfinderMob)
         }
     }
@@ -775,7 +734,6 @@ class SmartTransportItemsBetweenContainers(
         if (isWithinTargetDistance(CLOSE_ENOUGH_TO_START_QUEUING_DISTANCE, target, level, pathfinderMob, centerPos) &&
             isAnotherMobInteractingWithTarget(target, level)
         ) {
-            LOGGER.info("[移动至目标] 接近目标 ${target.pos}，但有其他实体，开始排队")
             startQueuing(pathfinderMob)
         } else if (isWithinTargetDistance(
                 getInteractionRange(pathfinderMob),
@@ -787,13 +745,11 @@ class SmartTransportItemsBetweenContainers(
         ) {
             // 到达目标前，检查容器是否可以打开（特别是潜影盒可能顶部被遮挡）
             if (isTargetBlocked(level, target)) {
-                LOGGER.warn("[移动至目标] 到达目标 ${target.pos}，但容器被遮挡，标记为不可达")
                 markVisitedBlockPosAsUnreachable(pathfinderMob, level, target.pos)
                 stopTargetingCurrentTarget(pathfinderMob)
                 return
             }
 
-            LOGGER.info("[移动至目标] 到达目标 ${target.pos}，开始交互")
             startOnReachedTargetInteraction(target, pathfinderMob)
         } else {
             walkTowardsTarget(pathfinderMob)
@@ -820,14 +776,12 @@ class SmartTransportItemsBetweenContainers(
                 centerPos
             )
         ) {
-            LOGGER.info("[目标交互] 离目标 ${target.pos} 太远，重新开始移动")
             onStartTravelling(pathfinderMob)
         } else {
             ticksSinceReachingTarget++
             onTargetInteraction(target, pathfinderMob)
 
             if (ticksSinceReachingTarget >= TARGET_INTERACTION_TIME) {
-                LOGGER.info("[目标交互] 交互完成 (${ticksSinceReachingTarget} ticks)，执行操作")
                 doReachedTargetInteraction(
                     pathfinderMob, target, { mob, container -> tryPickupItems(mob, container) },
                     { mob, _ -> stopTargetingCurrentTarget(mob) },
@@ -839,13 +793,11 @@ class SmartTransportItemsBetweenContainers(
     }
 
     private fun startQueuing(pathfinderMob: PathfinderMob) {
-        LOGGER.info("[状态变化] 进入排队状态")
         stopInPlace(pathfinderMob)
         state = TransportItemState.QUEUING
     }
 
     private fun resumeTravelling(pathfinderMob: PathfinderMob) {
-        LOGGER.info("[状态变化] 恢复移动状态")
         state = TransportItemState.TRAVELLING
         walkTowardsTarget(pathfinderMob)
     }
@@ -857,7 +809,6 @@ class SmartTransportItemsBetweenContainers(
     }
 
     private fun startOnReachedTargetInteraction(target: TransportItemTarget, pathfinderMob: PathfinderMob) {
-        LOGGER.info("[状态变化] 进入交互状态，目标: ${target.pos}")
         doReachedTargetInteraction(
             pathfinderMob,
             target.container,
@@ -870,8 +821,6 @@ class SmartTransportItemsBetweenContainers(
     }
 
     private fun onStartTravelling(pathfinderMob: PathfinderMob) {
-        LOGGER.debug("[状态变化] 重置为移动状态")
-
         onStartTravellingCallback.accept(pathfinderMob)
         state = TransportItemState.TRAVELLING
         interactionState = null
@@ -937,7 +886,6 @@ class SmartTransportItemsBetweenContainers(
 
         // 更新箱子记忆（排除Source Block）
         if (!isSourceBlock) {
-            LOGGER.info("[记忆更新] 更新箱子 ${target.pos} 的记忆")
             getOrCreateDeepMemory(pathfinderMob).updateChest(target.pos, target.container)
         }
     }
@@ -951,7 +899,6 @@ class SmartTransportItemsBetweenContainers(
     ) {
         // 获取黑名单并拾取物品
         val pickedItem = pickupItemsUsingMemory(container, pathfinderMob)
-        LOGGER.info("[拾取物品] 拾取了: ${pickedItem.item} x${pickedItem.count}")
 
         pathfinderMob.setItemSlot(EquipmentSlot.MAINHAND, pickedItem)
         pathfinderMob.setGuaranteedDrop(EquipmentSlot.MAINHAND)
@@ -975,7 +922,6 @@ class SmartTransportItemsBetweenContainers(
         gameTime: Long
     ) {
         val originalItem = pathfinderMob.mainHandItem.copy()
-        LOGGER.info("[放置物品] 尝试将 ${originalItem.item} x${originalItem.count} 放入箱子")
 
         val remainItemStack = transportItemsToContainer(pathfinderMob, container)
         container.setChanged()
@@ -986,19 +932,16 @@ class SmartTransportItemsBetweenContainers(
             if (isReturningToSourceBlock(pathfinderMob)) {
                 // 成功放回铜箱子，拉黑该物品
                 val item = originalItem.item
-                LOGGER.warn("[放置物品] 成功放回铜箱子，拉黑物品: $item")
                 val memory = getOrCreateDeepMemory(pathfinderMob)
                 memory.blockItem(item, gameTime)
                 clearMemoriesAfterMatchingTargetFound(pathfinderMob)
                 hasTransportFailed = false
             } else {
                 // 正常放置到目标箱子
-                LOGGER.info("[放置物品] 成功放置全部物品到箱子")
                 clearMemoriesAfterMatchingTargetFound(pathfinderMob)
             }
         } else {
             // 放置失败（箱子满了）
-            LOGGER.warn("[放置物品] 放置失败，剩余 ${remainItemStack.item} x${remainItemStack.count}")
             handlePutDownFailed(pathfinderMob)
         }
     }
@@ -1007,18 +950,13 @@ class SmartTransportItemsBetweenContainers(
      * 处理放置失败的情况
      */
     private fun handlePutDownFailed(pathfinderMob: PathfinderMob) {
-        val handItem = pathfinderMob.mainHandItem
-        LOGGER.info("[放置失败] 处理放置失败，手持: ${handItem.item}")
-
         // 检查是否是在返回铜箱子的过程中
         if (!pathfinderMob.isPassenger && isReturningToSourceBlock(pathfinderMob)) {
             // 铜箱子也满了，无法放回，进入冷却，不拉黑
-            LOGGER.warn("[放置失败] 铜箱子也满了，无法放回物品，进入冷却")
             enterCooldownWhenCannotReturnToSource(pathfinderMob)
             return
         }
 
-        LOGGER.info("[放置失败] 继续寻找下一个箱子")
         stopTargetingCurrentTarget(pathfinderMob)
     }
 
@@ -1037,7 +975,6 @@ class SmartTransportItemsBetweenContainers(
                 // 检查是否有记忆（任何箱子记录了这个物品）
                 if (memory.hasChestForItem(itemStack.item)) {
                     startIndex = i
-                    LOGGER.info("[拾取物品] 找到有记忆的物品: ${itemStack.item} at index $i")
                     break
                 }
             }
@@ -1045,7 +982,6 @@ class SmartTransportItemsBetweenContainers(
 
         // 如果没找到有记忆的物品，从头开始
         if (startIndex == -1) {
-            LOGGER.info("[拾取物品] 未找到有记忆的物品，使用默认策略")
             startIndex = 0
         }
 
@@ -1055,7 +991,6 @@ class SmartTransportItemsBetweenContainers(
             if (!itemStack.isEmpty) {
                 // 检查物品是否在黑名单中
                 if (blacklist.contains(itemStack.item)) {
-                    LOGGER.info("[拾取物品] 跳过黑名单物品: ${itemStack.item}")
                     continue
                 }
 
@@ -1063,13 +998,11 @@ class SmartTransportItemsBetweenContainers(
                     // 拾取第一个物品
                     val j = minOf(itemStack.count, TRANSPORTED_ITEM_MAX_STACK_SIZE)
                     result = container.removeItem(i, j)
-                    LOGGER.info("[拾取物品] 首次拾取 ${result.item} x${result.count}")
 
                     // 如果已经达到限制，直接返回
                     if (result.count >= TRANSPORTED_ITEM_MAX_STACK_SIZE ||
                         result.count >= result.maxStackSize
                     ) {
-                        LOGGER.info("[拾取物品] 已达到堆叠上限，停止扫描")
                         return result
                     }
                 } else {
@@ -1087,13 +1020,11 @@ class SmartTransportItemsBetweenContainers(
                             val toPickup = minOf(spaceLeft, itemStack.count)
                             val pickedStack = container.removeItem(i, toPickup)
                             result.count += pickedStack.count
-                            LOGGER.info("[拾取物品] 继续拾取 ${pickedStack.item} x${pickedStack.count}，当前总数: ${result.count}")
 
                             // 如果已经达到限制，返回
                             if (result.count >= TRANSPORTED_ITEM_MAX_STACK_SIZE ||
                                 result.count >= result.maxStackSize
                             ) {
-                                LOGGER.info("[拾取物品] 已达到堆叠上限，停止扫描")
                                 return result
                             }
                         }
@@ -1102,9 +1033,6 @@ class SmartTransportItemsBetweenContainers(
             }
         }
 
-        if (!result.isEmpty) {
-            LOGGER.info("[拾取物品] 扫描完成，最终拾取 ${result.item} x${result.count}")
-        }
         return result
     }
 
@@ -1144,8 +1072,6 @@ class SmartTransportItemsBetweenContainers(
     }
 
     private fun stopTargetingCurrentTarget(pathfinderMob: PathfinderMob) {
-        LOGGER.info("[目标清除] 停止当前目标: ${target?.pos}")
-
         // 如果当前在与容器交互且未完成（1 <= ticks < 60），需要额外触发一次关闭回调
         // 这确保了即使玩家提前取走物品导致行为提前中止，容器仍会被正确关闭
         val currentTarget = target
@@ -1154,15 +1080,14 @@ class SmartTransportItemsBetweenContainers(
             interactionState != null
         ) {
             try {
-                LOGGER.info("[目标清除] 提前中止交互，触发额外关闭回调 (已交互 $ticksSinceReachingTarget ticks)")
                 // 传入 TARGET_INTERACTION_TIME 来强制触发关闭逻辑
                 onTargetInteractionActions[interactionState]?.accept(
                     pathfinderMob,
                     currentTarget,
                     TARGET_INTERACTION_TIME
                 )
-            } catch (e: Exception) {
-                LOGGER.warn("[目标清除] 触发额外关闭回调时出错: ${e.message}")
+            } catch (_: Exception) {
+                // 忽略关闭回调异常
             }
         }
 
@@ -1183,7 +1108,6 @@ class SmartTransportItemsBetweenContainers(
      * 不拉黑物品，保留手中物品，冷却后重新尝试
      */
     private fun enterCooldownWhenCannotReturnToSource(pathfinderMob: PathfinderMob) {
-        LOGGER.info("[冷却] 无法返回铜箱子或铜箱子已满，进入冷却，保留手中物品")
         stopTargetingCurrentTarget(pathfinderMob)
         pathfinderMob.brain.setMemory(MemoryModuleType.TRANSPORT_ITEMS_COOLDOWN_TICKS, IDLE_COOLDOWN)
         pathfinderMob.brain.eraseMemory(MemoryModuleType.VISITED_BLOCK_POSITIONS)
