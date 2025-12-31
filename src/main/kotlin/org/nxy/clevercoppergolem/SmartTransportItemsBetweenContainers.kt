@@ -55,13 +55,14 @@ class SmartTransportItemsBetweenContainers(
     private val onStartTravellingCallback: Consumer<PathfinderMob>,
     private val shouldQueueForTarget: Predicate<TransportItemTarget>
 ) : Behavior<PathfinderMob>(
-    ImmutableMap.of(
-        MemoryModuleType.VISITED_BLOCK_POSITIONS, MemoryStatus.REGISTERED,
-        MemoryModuleType.UNREACHABLE_TRANSPORT_BLOCK_POSITIONS, MemoryStatus.REGISTERED,
-        MemoryModuleType.TRANSPORT_ITEMS_COOLDOWN_TICKS, MemoryStatus.VALUE_ABSENT,
-        MemoryModuleType.IS_PANICKING, MemoryStatus.VALUE_ABSENT,
-        ModMemoryModuleTypes.COPPER_GOLEM_DEEP_MEMORY, MemoryStatus.REGISTERED
-    )
+    ImmutableMap.builder<MemoryModuleType<*>, MemoryStatus>()
+        .put(MemoryModuleType.VISITED_BLOCK_POSITIONS, MemoryStatus.REGISTERED)
+        .put(MemoryModuleType.UNREACHABLE_TRANSPORT_BLOCK_POSITIONS, MemoryStatus.REGISTERED)
+        .put(MemoryModuleType.TRANSPORT_ITEMS_COOLDOWN_TICKS, MemoryStatus.VALUE_ABSENT)
+        .put(MemoryModuleType.IS_PANICKING, MemoryStatus.VALUE_ABSENT)
+        .put(ModMemoryModuleTypes.COPPER_GOLEM_DEEP_MEMORY, MemoryStatus.REGISTERED)
+        .put(ModMemoryModuleTypes.CHEST_HISTORY, MemoryStatus.REGISTERED)
+        .build()
 ) {
     companion object {
         const val TARGET_INTERACTION_TIME = 60
@@ -238,6 +239,7 @@ class SmartTransportItemsBetweenContainers(
         } else {
             // 手上有物品但找不到目标箱子，转头去搜索铜箱子
             hasTransportFailed = true
+            clearMemoriesAfterMatchingTargetFound(pathfinderMob)
             return true
         }
 
@@ -312,19 +314,31 @@ class SmartTransportItemsBetweenContainers(
             return Optional.empty()
         }
 
+        // 转换成 target
+        val target = TransportItemTarget.tryCreatePossibleTarget(blockEntity, serverLevel) ?: return Optional.empty()
+
         val visitedPositions = getVisitedPositions(pathfinderMob)
         val unreachablePositions = getUnreachablePositions(pathfinderMob)
 
-        val target =
+        // 验证 target 是否有效
+        return if (
             isDestinationBlockValidToPick(
                 pathfinderMob,
                 serverLevel,
-                blockEntity,
+                target,
                 visitedPositions,
-                unreachablePositions,
-                aabb
+                unreachablePositions
+            ) || isSourceBlockValidToPick(
+                serverLevel,
+                target,
+                visitedPositions,
+                unreachablePositions
             )
-        return if (target != null) Optional.of(target) else Optional.empty()
+        ) {
+            Optional.of(target)
+        } else {
+            Optional.empty()
+        }
     }
 
     private fun scanSourceBlock(serverLevel: ServerLevel, pathfinderMob: PathfinderMob): Optional<TransportItemTarget> {
@@ -333,130 +347,217 @@ class SmartTransportItemsBetweenContainers(
         val visitedPositions = getVisitedPositions(pathfinderMob)
         val unreachablePositions = getUnreachablePositions(pathfinderMob)
 
+        // 获取历史箱子集合（Set）
+        val historyChests = getChestHistory(pathfinderMob)
+
+        // 总是执行扫描，收集新的箱子
         val chunkPosList = ChunkPos.rangeClosed(
             ChunkPos(pathfinderMob.blockPosition()),
             Math.floorDiv(getHorizontalSearchDistance(pathfinderMob), 16) + 1
         ).toList()
 
-        var nearestTarget: TransportItemTarget? = null
-        var nearestDistance = Float.MAX_VALUE.toDouble()
-
         for (chunkPos in chunkPosList) {
             val chunk = serverLevel.chunkSource.getChunkNow(chunkPos.x, chunkPos.z) ?: continue
 
             for (blockEntity in chunk.blockEntities.values) {
-                if (blockEntity is BaseContainerBlockEntity) {
-                    val distance = blockEntity.blockPos.distToCenterSqr(pathfinderMob.position())
-                    if (distance < nearestDistance) {
-                        val target = isSourceBlockValidToPick(
-                            serverLevel, blockEntity, visitedPositions, unreachablePositions, aabb
-                        )
-                        if (target != null) {
-                            nearestTarget = target
-                            nearestDistance = distance
-                        }
-                    }
+                if (blockEntity !is BaseContainerBlockEntity) continue
+
+                val chestPos = blockEntity.blockPos
+
+                // 检查是否在范围内
+                if (!aabb.contains(chestPos.x.toDouble(), chestPos.y.toDouble(), chestPos.z.toDouble())) {
+                    continue
                 }
+
+                // 检查是否是源箱子类型
+                val target = TransportItemTarget.tryCreatePossibleTarget(blockEntity, serverLevel) ?: continue
+                if (!sourceBlockType.test(target.state)) continue
+
+                // 检查是否已访问过或不可达，如果是则不加入Set
+                if (isPositionAlreadyVisited(visitedPositions, unreachablePositions, target, serverLevel)) continue
+
+                // 加入历史集合
+                historyChests.add(chestPos)
             }
         }
 
-        return if (nearestTarget != null) Optional.of(nearestTarget) else Optional.empty()
+        // 从集合中提取距离最近的箱子
+        var nearestChestPos: BlockPos? = null
+        var nearestDistance = Double.MAX_VALUE
+        val mobPos = pathfinderMob.position()
+
+        for (chestPos in historyChests) {
+            val distance = chestPos.distToCenterSqr(mobPos)
+            if (distance < nearestDistance) {
+                nearestDistance = distance
+                nearestChestPos = chestPos
+            }
+        }
+
+        // 如果找到了最近的箱子
+        if (nearestChestPos != null) {
+            // 从集合中移除（无论验证是否成功）
+            historyChests.remove(nearestChestPos)
+            pathfinderMob.brain.setMemory(ModMemoryModuleTypes.CHEST_HISTORY, historyChests)
+
+            // 转换成 target 并验证
+            val blockEntity = serverLevel.getBlockEntity(nearestChestPos)
+            if (blockEntity is BaseContainerBlockEntity) {
+                val target = TransportItemTarget.tryCreatePossibleTarget(blockEntity, serverLevel)
+                if (target != null && isSourceBlockValidToPick(
+                        serverLevel,
+                        target,
+                        visitedPositions,
+                        unreachablePositions
+                    )
+                ) {
+                    return Optional.of(target)
+                }
+            }
+        } else {
+            // 更新空集合到内存
+            pathfinderMob.brain.setMemory(ModMemoryModuleTypes.CHEST_HISTORY, historyChests)
+        }
+
+        return Optional.empty()
     }
 
     private fun isSourceBlockValidToPick(
         level: Level,
-        blockEntity: BlockEntity,
+        target: TransportItemTarget,
         visitedPositions: Set<GlobalPos>,
-        unreachablePositions: Set<GlobalPos>,
-        aabb: AABB
-    ): TransportItemTarget? {
-        val blockPos = blockEntity.blockPos
-        if (!aabb.contains(blockPos.x.toDouble(), blockPos.y.toDouble(), blockPos.z.toDouble())) {
-            return null
-        }
-
-        val target = TransportItemTarget.tryCreatePossibleTarget(blockEntity, level) ?: return null
-
+        unreachablePositions: Set<GlobalPos>
+    ): Boolean {
         // 检查是否是源箱子类型
-        if (!sourceBlockType.test(target.state)) return null
+        if (!sourceBlockType.test(target.state)) return false
 
         // 检查是否已访问过
-        if (isPositionAlreadyVisited(visitedPositions, unreachablePositions, target, level)) return null
+        if (isPositionAlreadyVisited(
+                visitedPositions,
+                unreachablePositions,
+                target,
+                level
+            )
+        ) return false
 
         // 检查是否被锁定
-        if (isContainerLocked(target)) return null
+        if (isContainerLocked(target)) return false
 
-        return target
+        return true
     }
 
     private fun scanDestinationBlock(
         serverLevel: ServerLevel,
         pathfinderMob: PathfinderMob
     ): Optional<TransportItemTarget> {
-        val aabb = getTargetSearchArea(pathfinderMob)
+        val targetSearchArea = getTargetSearchArea(pathfinderMob)
         val visitedPositions = getVisitedPositions(pathfinderMob)
         val unreachablePositions = getUnreachablePositions(pathfinderMob)
 
+        // 获取历史箱子集合（Set）
+        val historyChests = getChestHistory(pathfinderMob)
+
+        // 总是执行扫描，收集新的箱子
         val chunkPosList = ChunkPos.rangeClosed(
             ChunkPos(pathfinderMob.blockPosition()),
             Math.floorDiv(getHorizontalSearchDistance(pathfinderMob), 16) + 1
         ).toList()
 
-        var nearestTarget: TransportItemTarget? = null
-        var nearestDistance = Float.MAX_VALUE.toDouble()
-
         for (chunkPos in chunkPosList) {
             val chunk = serverLevel.chunkSource.getChunkNow(chunkPos.x, chunkPos.z) ?: continue
 
             for (blockEntity in chunk.blockEntities.values) {
-                if (blockEntity is BaseContainerBlockEntity) {
-                    val distance = blockEntity.blockPos.distToCenterSqr(pathfinderMob.position())
-                    if (distance < nearestDistance) {
-                        val target = isDestinationBlockValidToPick(
-                            pathfinderMob, serverLevel, blockEntity, visitedPositions, unreachablePositions, aabb
-                        )
-                        if (target != null) {
-                            nearestTarget = target
-                            nearestDistance = distance
-                        }
-                    }
+                if (blockEntity !is BaseContainerBlockEntity) continue
+
+                val chestPos = blockEntity.blockPos
+
+                // 检查是否在范围内
+                if (!targetSearchArea.contains(chestPos.x.toDouble(), chestPos.y.toDouble(), chestPos.z.toDouble())) {
+                    continue
                 }
+
+                // 检查是否是目标箱子类型
+                val target = TransportItemTarget.tryCreatePossibleTarget(blockEntity, serverLevel) ?: continue
+                if (!isWantedBlock(pathfinderMob, target.state)) continue
+
+                // 检查是否已访问过或不可达，如果是则不加入Set
+                if (isPositionAlreadyVisited(visitedPositions, unreachablePositions, target, serverLevel)) continue
+
+                // 加入历史集合
+                historyChests.add(chestPos)
             }
         }
 
-        return if (nearestTarget != null) Optional.of(nearestTarget) else Optional.empty()
+        // 从集合中提取距离最近的箱子
+        var nearestChestPos: BlockPos? = null
+        var nearestDistance = Double.MAX_VALUE
+        val mobPos = pathfinderMob.position()
+
+        for (chestPos in historyChests) {
+            val distance = chestPos.distToCenterSqr(mobPos)
+            if (distance < nearestDistance) {
+                nearestDistance = distance
+                nearestChestPos = chestPos
+            }
+        }
+
+        // 如果找到了最近的箱子
+        if (nearestChestPos != null) {
+            // 从集合中移除（无论验证是否成功）
+            historyChests.remove(nearestChestPos)
+            pathfinderMob.brain.setMemory(ModMemoryModuleTypes.CHEST_HISTORY, historyChests)
+
+            // 转换成 target 并验证
+            val blockEntity = serverLevel.getBlockEntity(nearestChestPos)
+            if (blockEntity is BaseContainerBlockEntity) {
+                val target = TransportItemTarget.tryCreatePossibleTarget(blockEntity, serverLevel)
+                if (target != null && isDestinationBlockValidToPick(
+                        pathfinderMob,
+                        serverLevel,
+                        target,
+                        visitedPositions,
+                        unreachablePositions
+                    )
+                ) {
+                    return Optional.of(target)
+                }
+            }
+        } else {
+            // 更新空集合到内存
+            pathfinderMob.brain.setMemory(ModMemoryModuleTypes.CHEST_HISTORY, historyChests)
+        }
+
+        return Optional.empty()
     }
 
     private fun isDestinationBlockValidToPick(
         pathfinderMob: PathfinderMob,
         level: Level,
-        blockEntity: BlockEntity,
+        target: TransportItemTarget,
         visitedPositions: Set<GlobalPos>,
-        unreachablePositions: Set<GlobalPos>,
-        aabb: AABB
-    ): TransportItemTarget? {
-        val blockPos = blockEntity.blockPos
-        if (!aabb.contains(blockPos.x.toDouble(), blockPos.y.toDouble(), blockPos.z.toDouble())) {
-            return null
-        }
-
-        val target = TransportItemTarget.tryCreatePossibleTarget(blockEntity, level) ?: return null
-
+        unreachablePositions: Set<GlobalPos>
+    ): Boolean {
         val isWanted = isWantedBlock(pathfinderMob, target.state)
-        if (!isWanted) return null
+        if (!isWanted) return false
 
-        if (isPositionAlreadyVisited(visitedPositions, unreachablePositions, target, level)) return null
+        if (isPositionAlreadyVisited(
+                visitedPositions,
+                unreachablePositions,
+                target,
+                level
+            )
+        ) return false
 
-        if (isContainerLocked(target)) return null
+        if (isContainerLocked(target)) return false
 
         // 潜影盒特殊逻辑：手持潜影盒时不能选择潜影盒作为目标（潜影盒内不能放潜影盒）
         if (pathfinderMob.mainHandItem.`is`(ItemTags.SHULKER_BOXES)) {
             if (target.state.block is ShulkerBoxBlock) {
-                return null
+                return false
             }
         }
 
-        return target
+        return true
     }
 
     private fun isContainerLocked(target: TransportItemTarget): Boolean {
@@ -491,9 +592,22 @@ class SmartTransportItemsBetweenContainers(
     ): Boolean {
         val path = pathfinderMob.navigation.path ?: pathfinderMob.navigation.createPath(target.pos, 0)
         val mobCenterPos = getPositionToReachTargetFrom(path, pathfinderMob)
-        val isWithinRange = isWithinTargetDistance(getInteractionRange(pathfinderMob), VERTICAL_INTERACTION_REACH, target, level, pathfinderMob, mobCenterPos)
+        val isWithinRange = isWithinTargetDistance(
+            getInteractionRange(pathfinderMob),
+            VERTICAL_INTERACTION_REACH,
+            target,
+            level,
+            pathfinderMob,
+            mobCenterPos
+        )
         val hasNoPathAndNotInRange = path == null && !isWithinRange
-        return hasNoPathAndNotInRange || targetIsReachableFromPosition(level, isWithinRange, mobCenterPos, target, pathfinderMob)
+        return hasNoPathAndNotInRange || targetIsReachableFromPosition(
+            level,
+            isWithinRange,
+            mobCenterPos,
+            target,
+            pathfinderMob
+        )
     }
 
     private fun getPositionToReachTargetFrom(path: Path?, pathfinderMob: PathfinderMob): Vec3 {
@@ -549,6 +663,10 @@ class SmartTransportItemsBetweenContainers(
 
     private fun getUnreachablePositions(pathfinderMob: PathfinderMob): Set<GlobalPos> {
         return pathfinderMob.brain.getMemory(MemoryModuleType.UNREACHABLE_TRANSPORT_BLOCK_POSITIONS).orElse(emptySet())
+    }
+
+    private fun getChestHistory(pathfinderMob: PathfinderMob): MutableSet<BlockPos> {
+        return pathfinderMob.brain.getMemory(ModMemoryModuleTypes.CHEST_HISTORY).orElse(mutableSetOf())
     }
 
     private fun isPositionAlreadyVisited(
@@ -620,7 +738,8 @@ class SmartTransportItemsBetweenContainers(
         mobCenterPos: Vec3
     ): Boolean {
         val mobBoundingBox = pathfinderMob.boundingBox
-        val mobCenterBoundingBox = AABB.ofSize(mobCenterPos, mobBoundingBox.xsize, mobBoundingBox.ysize, mobBoundingBox.zsize)
+        val mobCenterBoundingBox =
+            AABB.ofSize(mobCenterPos, mobBoundingBox.xsize, mobBoundingBox.ysize, mobBoundingBox.zsize)
         return target.state
             .getCollisionShape(level, target.pos)
             .bounds()
@@ -801,10 +920,12 @@ class SmartTransportItemsBetweenContainers(
 
             if (ticksSinceReachingTarget >= TARGET_INTERACTION_TIME) {
                 doReachedTargetInteraction(
-                    pathfinderMob, target, { mob, container -> tryPickupItems(mob, container) },
+                    pathfinderMob, target,
+                    { mob, container -> tryPickupItems(mob, container) },
                     { mob, _ -> stopTargetingCurrentTarget(mob) },
-                    { mob, container -> tryPlaceItems(mob, container, gameTime) }
-                ) { mob, _ -> handlePutDownFailed(mob) }
+                    { mob, container -> tryPlaceItems(mob, container, gameTime) },
+                    { mob, _ -> handlePutDownFailed(mob) }
+                )
                 onStartTravelling(pathfinderMob)
             }
         }
@@ -924,6 +1045,7 @@ class SmartTransportItemsBetweenContainers(
 
         // 检查是否成功拾取到物品
         if (pickedItem.isEmpty) {
+            // 未拾取到物品，停止当前目标
             stopTargetingCurrentTarget(pathfinderMob)
         } else {
             // 成功拾取到物品
@@ -952,12 +1074,9 @@ class SmartTransportItemsBetweenContainers(
                 val item = originalItem.item
                 val memory = getOrCreateDeepMemory(pathfinderMob)
                 memory.blockItem(item, gameTime)
-                clearMemoriesAfterMatchingTargetFound(pathfinderMob)
                 hasTransportFailed = false
-            } else {
-                // 正常放置到目标箱子
-                clearMemoriesAfterMatchingTargetFound(pathfinderMob)
             }
+            clearMemoriesAfterMatchingTargetFound(pathfinderMob)
         } else {
             // 放置失败（箱子满了）
             handlePutDownFailed(pathfinderMob)
@@ -1119,6 +1238,7 @@ class SmartTransportItemsBetweenContainers(
         stopTargetingCurrentTarget(pathfinderMob)
         pathfinderMob.brain.eraseMemory(MemoryModuleType.VISITED_BLOCK_POSITIONS)
         pathfinderMob.brain.eraseMemory(MemoryModuleType.UNREACHABLE_TRANSPORT_BLOCK_POSITIONS)
+        pathfinderMob.brain.eraseMemory(ModMemoryModuleTypes.CHEST_HISTORY)
     }
 
     /**
@@ -1130,6 +1250,7 @@ class SmartTransportItemsBetweenContainers(
         pathfinderMob.brain.setMemory(MemoryModuleType.TRANSPORT_ITEMS_COOLDOWN_TICKS, IDLE_COOLDOWN)
         pathfinderMob.brain.eraseMemory(MemoryModuleType.VISITED_BLOCK_POSITIONS)
         pathfinderMob.brain.eraseMemory(MemoryModuleType.UNREACHABLE_TRANSPORT_BLOCK_POSITIONS)
+        pathfinderMob.brain.eraseMemory(ModMemoryModuleTypes.CHEST_HISTORY)
 
         hasTransportFailed = false
     }
