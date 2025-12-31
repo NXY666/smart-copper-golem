@@ -490,10 +490,10 @@ class SmartTransportItemsBetweenContainers(
         pathfinderMob: PathfinderMob
     ): Boolean {
         val path = pathfinderMob.navigation.path ?: pathfinderMob.navigation.createPath(target.pos, 0)
-        val vec3 = getPositionToReachTargetFrom(path, pathfinderMob)
-        val bl = isWithinTargetDistance(getInteractionRange(pathfinderMob), target, level, pathfinderMob, vec3)
-        val bl2 = path == null && !bl
-        return bl2 || targetIsReachableFromPosition(level, bl, vec3, target, pathfinderMob)
+        val mobCenterPos = getPositionToReachTargetFrom(path, pathfinderMob)
+        val isWithinRange = isWithinTargetDistance(getInteractionRange(pathfinderMob), VERTICAL_INTERACTION_REACH, target, level, pathfinderMob, mobCenterPos)
+        val hasNoPathAndNotInRange = path == null && !isWithinRange
+        return hasNoPathAndNotInRange || targetIsReachableFromPosition(level, isWithinRange, mobCenterPos, target, pathfinderMob)
     }
 
     private fun getPositionToReachTargetFrom(path: Path?, pathfinderMob: PathfinderMob): Vec3 {
@@ -612,37 +612,38 @@ class SmartTransportItemsBetweenContainers(
     }
 
     private fun isWithinTargetDistance(
-        distance: Double,
+        maxDistance: Double,
+        verticalReach: Double,
         target: TransportItemTarget,
         level: Level,
         pathfinderMob: PathfinderMob,
-        vec3: Vec3
+        mobCenterPos: Vec3
     ): Boolean {
-        val aabb = pathfinderMob.boundingBox
-        val aabb2 = AABB.ofSize(vec3, aabb.xsize, aabb.ysize, aabb.zsize)
+        val mobBoundingBox = pathfinderMob.boundingBox
+        val mobCenterBoundingBox = AABB.ofSize(mobCenterPos, mobBoundingBox.xsize, mobBoundingBox.ysize, mobBoundingBox.zsize)
         return target.state
             .getCollisionShape(level, target.pos)
             .bounds()
-            .inflate(distance, VERTICAL_INTERACTION_REACH - 1.5, distance)
+            .inflate(maxDistance, 0.5 + verticalReach, maxDistance)
             .move(target.pos)
-            .intersects(aabb2)
+            .intersects(mobCenterBoundingBox)
     }
 
     private fun targetIsReachableFromPosition(
         level: Level,
-        bl: Boolean,
-        vec3: Vec3,
+        isWithinRange: Boolean,
+        mobCenterPos: Vec3,
         target: TransportItemTarget,
         pathfinderMob: PathfinderMob
     ): Boolean {
-        return bl && canSeeAnyTargetSide(target, level, pathfinderMob, vec3)
+        return isWithinRange && canSeeAnyTargetSide(target, level, pathfinderMob, mobCenterPos)
     }
 
     private fun canSeeAnyTargetSide(
         target: TransportItemTarget,
         level: Level,
         pathfinderMob: PathfinderMob,
-        vec3: Vec3
+        mobCenterPos: Vec3
     ): Boolean {
         val center = target.pos.center
         return Direction.stream()
@@ -650,7 +651,7 @@ class SmartTransportItemsBetweenContainers(
             .map { pos ->
                 level.clip(
                     ClipContext(
-                        vec3,
+                        mobCenterPos,
                         pos,
                         ClipContext.Block.COLLIDER,
                         ClipContext.Fluid.NONE,
@@ -737,12 +738,22 @@ class SmartTransportItemsBetweenContainers(
     private fun onTravelToTarget(target: TransportItemTarget, level: Level, pathfinderMob: PathfinderMob) {
         val centerPos = getCenterPos(pathfinderMob)
 
-        if (isWithinTargetDistance(CLOSE_ENOUGH_TO_START_QUEUING_DISTANCE, target, level, pathfinderMob, centerPos) &&
+        if (
+            isWithinTargetDistance(
+                CLOSE_ENOUGH_TO_START_QUEUING_DISTANCE,
+                VERTICAL_INTERACTION_REACH,
+                target,
+                level,
+                pathfinderMob,
+                centerPos
+            ) &&
             isAnotherMobInteractingWithTarget(target, level)
         ) {
             startQueuing(pathfinderMob)
-        } else if (isWithinTargetDistance(
+        } else if (
+            isWithinTargetDistance(
                 getInteractionRange(pathfinderMob),
+                VERTICAL_INTERACTION_REACH,
                 target,
                 level,
                 pathfinderMob,
@@ -772,14 +783,15 @@ class SmartTransportItemsBetweenContainers(
         pathfinderMob: PathfinderMob,
         gameTime: Long
     ) {
-        val centerPos = getCenterPos(pathfinderMob)
+        val mobCenterPos = getCenterPos(pathfinderMob)
 
         if (!isWithinTargetDistance(
                 CLOSE_ENOUGH_TO_CONTINUE_INTERACTING_WITH_TARGET,
+                VERTICAL_INTERACTION_REACH,
                 target,
                 level,
                 pathfinderMob,
-                centerPos
+                mobCenterPos
             )
         ) {
             onStartTravelling(pathfinderMob)

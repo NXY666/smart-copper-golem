@@ -53,7 +53,7 @@ public abstract class CopperGolemAiMixin {
 	private static final int TRANSPORT_ITEM_HORIZONTAL_SEARCH_RADIUS = 32;
 
 	@Unique
-	private static final int TRANSPORT_ITEM_VERTICAL_SEARCH_RADIUS = 8;
+	private static final int TRANSPORT_ITEM_VERTICAL_SEARCH_RADIUS = 16;
 
 	@Unique
 	private static final int TICK_TO_START_ON_REACHED_INTERACTION = 1;
