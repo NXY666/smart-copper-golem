@@ -262,7 +262,7 @@ class SmartTransportItemsBetweenContainers(
         val memory = getOrCreateDeepMemory(pathfinderMob)
         val currentGameTime = serverLevel.gameTime
 
-        // 如果手上有物品，检查记忆
+        // 如果手上有物品且不是返回源箱子，检查记忆（DestinationBlock逻辑）
         if (!handItem.isEmpty && !isReturningToSourceBlock(pathfinderMob)) {
             val item = handItem.item
 
@@ -381,45 +381,70 @@ class SmartTransportItemsBetweenContainers(
             }
         }
 
-        // 从集合中提取距离最近的箱子
-        var nearestChestPos: BlockPos? = null
-        var nearestDistance = Double.MAX_VALUE
+        // 筛选出所有有效的箱子（仅本次使用）
+        val validChests = historyChests.filter { chestPos ->
+            val blockEntity = serverLevel.getBlockEntity(chestPos)
+            if (blockEntity !is BaseContainerBlockEntity) return@filter false
+
+            val target = TransportItemTarget.tryCreatePossibleTarget(blockEntity, serverLevel)
+            target != null && isSourceBlockValidToPick(
+                serverLevel,
+                target,
+                visitedPositions,
+                unreachablePositions
+            )
+        }
+
+        // 如果没有有效箱子，返回空
+        if (validChests.isEmpty()) {
+            pathfinderMob.brain.setMemory(ModMemoryModuleTypes.CHEST_HISTORY, historyChests)
+            return Optional.empty()
+        }
+
+        // 从有效箱子中距离加权随机选择
         val mobPos = pathfinderMob.position()
+        val selectedChestPos = selectChestByWeightedDistance(validChests.toSet(), mobPos)
 
-        for (chestPos in historyChests) {
+        // 从历史集合中移除选中的箱子
+        historyChests.remove(selectedChestPos)
+        pathfinderMob.brain.setMemory(ModMemoryModuleTypes.CHEST_HISTORY, historyChests)
+
+        // 返回选中的箱子（已验证有效）
+        val blockEntity = serverLevel.getBlockEntity(selectedChestPos) as BaseContainerBlockEntity
+        val target = TransportItemTarget.tryCreatePossibleTarget(blockEntity, serverLevel)!!
+        return Optional.of(target)
+    }
+
+    /**
+     * 根据距离加权随机选择箱子
+     * 距离越近，权重越高（被选中的概率越大）
+     */
+    private fun selectChestByWeightedDistance(chests: Set<BlockPos>, mobPos: Vec3): BlockPos {
+        // 计算每个箱子的权重（距离的倒数）
+        val weights = chests.map { chestPos ->
             val distance = chestPos.distToCenterSqr(mobPos)
-            if (distance < nearestDistance) {
-                nearestDistance = distance
-                nearestChestPos = chestPos
+            // 使用 1 / (distance + 1) 作为权重，避免除以0，距离越近权重越高
+            val weight = 1.0 / (distance + 1.0)
+            chestPos to weight
+        }
+
+        // 计算总权重
+        val totalWeight = weights.sumOf { it.second }
+
+        // 生成随机数
+        val random = Math.random() * totalWeight
+
+        // 根据权重选择箱子
+        var cumulative = 0.0
+        for ((chestPos, weight) in weights) {
+            cumulative += weight
+            if (random <= cumulative) {
+                return chestPos
             }
         }
 
-        // 如果找到了最近的箱子
-        if (nearestChestPos != null) {
-            // 从集合中移除（无论验证是否成功）
-            historyChests.remove(nearestChestPos)
-            pathfinderMob.brain.setMemory(ModMemoryModuleTypes.CHEST_HISTORY, historyChests)
-
-            // 转换成 target 并验证
-            val blockEntity = serverLevel.getBlockEntity(nearestChestPos)
-            if (blockEntity is BaseContainerBlockEntity) {
-                val target = TransportItemTarget.tryCreatePossibleTarget(blockEntity, serverLevel)
-                if (target != null && isSourceBlockValidToPick(
-                        serverLevel,
-                        target,
-                        visitedPositions,
-                        unreachablePositions
-                    )
-                ) {
-                    return Optional.of(target)
-                }
-            }
-        } else {
-            // 更新空集合到内存
-            pathfinderMob.brain.setMemory(ModMemoryModuleTypes.CHEST_HISTORY, historyChests)
-        }
-
-        return Optional.empty()
+        // 理论上不会到这里，但保险起见返回第一个
+        return weights.first().first
     }
 
     private fun isSourceBlockValidToPick(
@@ -785,11 +810,11 @@ class SmartTransportItemsBetweenContainers(
         mobCenterPos: Vec3
     ): Boolean {
         val center = target.pos.center
-        
+
         return Direction.stream()
             .map { dir -> center.add(0.4 * dir.stepX, 0.4 * dir.stepY, 0.4 * dir.stepZ) }
             .anyMatch { pos ->
-                val hit= level.clip(
+                val hit = level.clip(
                     ClipContext(
                         mobCenterPos,
                         pos,
@@ -945,7 +970,7 @@ class SmartTransportItemsBetweenContainers(
                     { mob, container -> tryPickupItems(mob, container) },
                     { mob, _ -> stopTargetingCurrentTarget(mob) },
                     { mob, container -> tryPlaceItems(mob, container, gameTime) },
-                    { mob, _ -> handlePutDownFailed(mob) }
+                    { mob, _ -> stopTargetingCurrentTarget(mob) }
                 )
                 onStartTravelling(pathfinderMob)
             }
@@ -1100,22 +1125,8 @@ class SmartTransportItemsBetweenContainers(
             clearMemoriesAfterMatchingTargetFound(pathfinderMob)
         } else {
             // 放置失败（箱子满了）
-            handlePutDownFailed(pathfinderMob)
+            stopTargetingCurrentTarget(pathfinderMob)
         }
-    }
-
-    /**
-     * 处理放置失败的情况
-     */
-    private fun handlePutDownFailed(pathfinderMob: PathfinderMob) {
-        // 检查是否是在返回铜箱子的过程中
-        if (!pathfinderMob.isPassenger && isReturningToSourceBlock(pathfinderMob)) {
-            // 铜箱子也满了，无法放回，进入冷却，不拉黑
-            enterCooldownWhenCannotReturnToSource(pathfinderMob)
-            return
-        }
-
-        stopTargetingCurrentTarget(pathfinderMob)
     }
 
     private fun pickupItemsUsingMemory(container: Container, pathfinderMob: PathfinderMob): ItemStack {
