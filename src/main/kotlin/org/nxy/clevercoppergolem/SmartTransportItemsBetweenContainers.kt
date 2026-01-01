@@ -491,43 +491,60 @@ class SmartTransportItemsBetweenContainers(
         // 从集合中提取距离最近的箱子
         var nearestChestPos: BlockPos? = null
         var nearestDistance = Double.MAX_VALUE
+        var nearestTarget: TransportItemTarget? = null
+
         val mobPos = pathfinderMob.position()
 
         for (chestPos in historyChests) {
             val distance = chestPos.distToCenterSqr(mobPos)
             if (distance < nearestDistance) {
-                nearestDistance = distance
-                nearestChestPos = chestPos
-            }
-        }
+                val blockEntity = serverLevel.getBlockEntity(chestPos)
 
-        // 如果找到了最近的箱子
-        if (nearestChestPos != null) {
-            // 从集合中移除（无论验证是否成功）
-            historyChests.remove(nearestChestPos)
-            pathfinderMob.brain.setMemory(ModMemoryModuleTypes.CHEST_HISTORY, historyChests)
+                // 至少是容器
+                if (blockEntity !is BaseContainerBlockEntity) continue
 
-            // 转换成 target 并验证
-            val blockEntity = serverLevel.getBlockEntity(nearestChestPos)
-            if (blockEntity is BaseContainerBlockEntity) {
+                // 验证箱子是否有效
                 val target = TransportItemTarget.tryCreatePossibleTarget(blockEntity, serverLevel)
-                if (target != null && isDestinationBlockValidToPick(
+                if (target == null || !isDestinationBlockValidToPick(
                         pathfinderMob,
                         serverLevel,
                         target,
                         visitedPositions,
                         unreachablePositions
                     )
+                ) continue
+
+                if (isWithinTargetDistance(
+                        getInteractionRange(pathfinderMob),
+                        VERTICAL_INTERACTION_REACH,
+                        target,
+                        serverLevel,
+                        pathfinderMob,
+                        mobPos
+                    )
                 ) {
-                    return Optional.of(target)
+                    // 找到在互动范围内的箱子，直接使用
+                    nearestChestPos = chestPos
+                    nearestTarget = target
+                    break
                 }
+
+                nearestDistance = distance
+                nearestChestPos = chestPos
+                nearestTarget = target
             }
-        } else {
-            // 更新空集合到内存
-            pathfinderMob.brain.setMemory(ModMemoryModuleTypes.CHEST_HISTORY, historyChests)
         }
 
-        return Optional.empty()
+        // 如果找到了最近的箱子
+        if (nearestTarget != null) {
+            // 从集合中移除（无论验证是否成功）
+            historyChests.remove(nearestChestPos)
+            pathfinderMob.brain.setMemory(ModMemoryModuleTypes.CHEST_HISTORY, historyChests)
+            return Optional.of(nearestTarget)
+        } else {
+            pathfinderMob.brain.setMemory(ModMemoryModuleTypes.CHEST_HISTORY, historyChests)
+            return Optional.empty()
+        }
     }
 
     private fun isDestinationBlockValidToPick(
@@ -546,7 +563,12 @@ class SmartTransportItemsBetweenContainers(
                 target,
                 level
             )
-        ) return false
+        ) {
+            getConnectedTargets(target, level)
+                .map { GlobalPos(level.dimension(), it.pos) }
+                .anyMatch { visitedPositions.contains(it) || unreachablePositions.contains(it) }
+            return false
+        }
 
         if (isContainerLocked(target)) return false
 
@@ -588,36 +610,37 @@ class SmartTransportItemsBetweenContainers(
     private fun isTravellingPathValid(
         level: Level,
         target: TransportItemTarget,
-        pathfinderMob: PathfinderMob
+        mob: PathfinderMob
     ): Boolean {
-        val path = pathfinderMob.navigation.path ?: pathfinderMob.navigation.createPath(target.pos, 0)
-        val mobCenterPos = getPositionToReachTargetFrom(path, pathfinderMob)
-        val isWithinRange = isWithinTargetDistance(
-            getInteractionRange(pathfinderMob),
+        val path = mob.navigation.path ?: mob.navigation.createPath(target.pos, 0)
+
+        val reachFromPos: Vec3 = getPositionToReachTargetFrom(path, mob)
+
+        val withinRange = isWithinTargetDistance(
+            getInteractionRange(mob),
             VERTICAL_INTERACTION_REACH,
             target,
             level,
-            pathfinderMob,
-            mobCenterPos
+            mob,
+            reachFromPos
         )
-        val hasNoPathAndNotInRange = path == null && !isWithinRange
-        return hasNoPathAndNotInRange || targetIsReachableFromPosition(
-            level,
-            isWithinRange,
-            mobCenterPos,
-            target,
-            pathfinderMob
-        )
+
+        if (!withinRange) {
+            return false
+        }
+
+        // “可达”的定义：在交互范围内，并且能看到目标的任一侧（可交互）
+        return this.targetIsReachableFromPosition(level, reachFromPos, target, mob)
     }
 
     private fun getPositionToReachTargetFrom(path: Path?, pathfinderMob: PathfinderMob): Vec3 {
         val endNode = path?.endNode
-        val vec3 = if (endNode == null) pathfinderMob.position() else endNode.asBlockPos().bottomCenter
-        return setMiddleYPosition(pathfinderMob, vec3)
+        val pos = if (endNode != null) endNode.asBlockPos().bottomCenter else pathfinderMob.position()
+        return setMiddleYPosition(pathfinderMob, pos)
     }
 
-    private fun setMiddleYPosition(pathfinderMob: PathfinderMob, vec3: Vec3): Vec3 {
-        return vec3.add(0.0, pathfinderMob.boundingBox.ysize / 2.0, 0.0)
+    private fun setMiddleYPosition(pathfinderMob: PathfinderMob, pos: Vec3): Vec3 {
+        return pos.add(0.0, pathfinderMob.boundingBox.ysize / 2.0, 0.0)
     }
 
     private fun isTargetBlocked(level: Level, target: TransportItemTarget): Boolean {
@@ -715,9 +738,7 @@ class SmartTransportItemsBetweenContainers(
     }
 
     private fun isWantedBlock(pathfinderMob: PathfinderMob, blockState: BlockState): Boolean {
-        return if (isPickingUpItems(pathfinderMob)) {
-            sourceBlockType.test(blockState)
-        } else if (isReturningToSourceBlock(pathfinderMob)) {
+        return if (isReturningToSourceBlock(pathfinderMob)) {
             sourceBlockType.test(blockState)
         } else {
             destinationBlockType.test(blockState)
@@ -750,12 +771,11 @@ class SmartTransportItemsBetweenContainers(
 
     private fun targetIsReachableFromPosition(
         level: Level,
-        isWithinRange: Boolean,
         mobCenterPos: Vec3,
         target: TransportItemTarget,
         pathfinderMob: PathfinderMob
     ): Boolean {
-        return isWithinRange && canSeeAnyTargetSide(target, level, pathfinderMob, mobCenterPos)
+        return canSeeAnyTargetSide(target, level, pathfinderMob, mobCenterPos)
     }
 
     private fun canSeeAnyTargetSide(
@@ -765,10 +785,11 @@ class SmartTransportItemsBetweenContainers(
         mobCenterPos: Vec3
     ): Boolean {
         val center = target.pos.center
+        
         return Direction.stream()
-            .map { dir -> center.add(0.5 * dir.stepX, 0.5 * dir.stepY, 0.5 * dir.stepZ) }
-            .map { pos ->
-                level.clip(
+            .map { dir -> center.add(0.4 * dir.stepX, 0.4 * dir.stepY, 0.4 * dir.stepZ) }
+            .anyMatch { pos ->
+                val hit= level.clip(
                     ClipContext(
                         mobCenterPos,
                         pos,
@@ -777,8 +798,8 @@ class SmartTransportItemsBetweenContainers(
                         pathfinderMob
                     )
                 )
+                hit.type == HitResult.Type.BLOCK && hit.blockPos == target.pos
             }
-            .anyMatch { hit -> hit.type == HitResult.Type.BLOCK && hit.blockPos == target.pos }
     }
 
     private fun isAnotherMobInteractingWithTarget(target: TransportItemTarget, level: Level): Boolean {

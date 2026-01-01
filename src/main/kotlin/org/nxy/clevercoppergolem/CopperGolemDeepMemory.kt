@@ -22,7 +22,7 @@ data class CopperGolemDeepMemory(
     private val blacklistedItems: MutableMap<Item, Long> = mutableMapOf()
 ) {
     companion object {
-        // 物品拉黑时长（游戏tick）：大约5分钟
+        // 物品拉黑时长（游戏tick）
         const val BLACKLIST_DURATION_TICKS = 6000L
 
         /**
