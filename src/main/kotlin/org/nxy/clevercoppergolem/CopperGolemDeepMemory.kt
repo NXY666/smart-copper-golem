@@ -91,7 +91,6 @@ data class CopperGolemDeepMemory(
             itemsWithSpace.addAll(itemsWithNonFullStack)
         }
 
-
         // 先清除这个箱子之前的记忆
         clearChest(chestPos)
 

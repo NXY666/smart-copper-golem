@@ -78,7 +78,7 @@ class SmartTransportItemsBetweenContainers(
          * 铜傀儡可以与目标箱子交互的垂直距离
          * 默认0.5太小，增加到2.0让两格高的铜傀儡可以够到更高的箱子
          */
-        const val VERTICAL_INTERACTION_REACH = 4.0
+        const val VERTICAL_INTERACTION_REACH = 2.0
 
         /**
          * 物品匹配模式
@@ -167,6 +167,10 @@ class SmartTransportItemsBetweenContainers(
         }
     }
 
+    private fun isFailToTransportItems(): Boolean {
+        return hasTransportFailed
+    }
+
     override fun checkExtraStartConditions(serverLevel: ServerLevel, pathfinderMob: PathfinderMob): Boolean {
         return !pathfinderMob.isLeashed
     }
@@ -180,20 +184,15 @@ class SmartTransportItemsBetweenContainers(
     override fun timedOut(l: Long): Boolean = false
 
     override fun tick(serverLevel: ServerLevel, pathfinderMob: PathfinderMob, gameTime: Long) {
-        // 每tick检查：如果手空且运输失败标志为true，重置标志
-        if (isPickingUpItems(pathfinderMob) && hasTransportFailed) {
-            hasTransportFailed = false
-        }
-
         // 每20tick清理一次超出范围的记忆和过期的黑名单
         ticksSinceLastCleanup++
         if (ticksSinceLastCleanup >= 20) {
             val memory = getOrCreateDeepMemory(pathfinderMob)
-            memory.clearOutOfRangeChest(
-                pathfinderMob.blockPosition(),
-                getHorizontalSearchDistance(pathfinderMob),
-                getVerticalSearchDistance(pathfinderMob)
-            )
+//            memory.clearOutOfRangeChest(
+//                pathfinderMob.blockPosition(),
+//                getHorizontalSearchDistance(pathfinderMob),
+//                getVerticalSearchDistance(pathfinderMob)
+//            )
             memory.clearExpiredBlacklist(gameTime)
             ticksSinceLastCleanup = 0
         }
@@ -286,8 +285,6 @@ class SmartTransportItemsBetweenContainers(
                 if (targetOpt.isPresent) {
                     return targetOpt
                 }
-                // 如果记忆中的箱子无效，清除该箱子的记忆
-                memory.clearChest(rememberedChest)
             }
         }
 
@@ -303,12 +300,6 @@ class SmartTransportItemsBetweenContainers(
         pathfinderMob: PathfinderMob,
         chestPos: BlockPos
     ): Optional<TransportItemTarget> {
-        // 先验证范围，避免无效查询
-        val aabb = getTargetSearchArea(pathfinderMob)
-        if (!aabb.contains(chestPos.x.toDouble(), chestPos.y.toDouble(), chestPos.z.toDouble())) {
-            return Optional.empty()
-        }
-
         val blockEntity = serverLevel.getBlockEntity(chestPos)
         if (blockEntity !is BaseContainerBlockEntity) {
             return Optional.empty()
@@ -320,25 +311,25 @@ class SmartTransportItemsBetweenContainers(
         val visitedPositions = getVisitedPositions(pathfinderMob)
         val unreachablePositions = getUnreachablePositions(pathfinderMob)
 
-        // 验证 target 是否有效
-        return if (
+        val result = if (isReturningToSourceBlock(pathfinderMob)) {
+            isSourceBlockValidToPick(
+                serverLevel,
+                target,
+                visitedPositions,
+                unreachablePositions
+            )
+        } else {
             isDestinationBlockValidToPick(
                 pathfinderMob,
                 serverLevel,
                 target,
                 visitedPositions,
                 unreachablePositions
-            ) || isSourceBlockValidToPick(
-                serverLevel,
-                target,
-                visitedPositions,
-                unreachablePositions
             )
-        ) {
-            Optional.of(target)
-        } else {
-            Optional.empty()
         }
+
+        // 验证 target 是否有效
+        return if (result) Optional.of(target) else Optional.empty()
     }
 
     private fun scanSourceBlock(serverLevel: ServerLevel, pathfinderMob: PathfinderMob): Optional<TransportItemTarget> {
@@ -1115,7 +1106,7 @@ class SmartTransportItemsBetweenContainers(
 
         if (remainItemStack.isEmpty) {
             // 成功放置
-            if (isReturningToSourceBlock(pathfinderMob)) {
+            if (isFailToTransportItems()) {
                 // 成功放回铜箱子，拉黑该物品
                 val item = originalItem.item
                 val memory = getOrCreateDeepMemory(pathfinderMob)
