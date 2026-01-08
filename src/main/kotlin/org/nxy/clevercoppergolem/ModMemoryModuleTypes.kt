@@ -16,6 +16,7 @@ object ModMemoryModuleTypes {
      * 铜傀儡的物品箱子索引记忆
      * 存储箱子->物品和物品->箱子的双向映射
      */
+    @JvmStatic
     lateinit var COPPER_GOLEM_DEEP_MEMORY: MemoryModuleType<CopperGolemDeepMemory>
         private set
 
@@ -23,6 +24,7 @@ object ModMemoryModuleTypes {
      * 箱子历史记录集合
      * 源箱子和目标箱子共用此记录，在状态切换时清理
      */
+    @JvmStatic
     lateinit var CHEST_HISTORY: MemoryModuleType<MutableSet<BlockPos>>
         private set
 
