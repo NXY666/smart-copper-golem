@@ -150,6 +150,9 @@ class SmartTransportItemsBetweenContainers(
         private const val CLOSE_ENOUGH_TO_START_INTERACTING_WITH_TARGET_DISTANCE = 0.8
         private const val CLOSE_ENOUGH_TO_START_INTERACTING_WITH_TARGET_PATH_END_DISTANCE = HORIZONTAL_INTERACTION_RANGE.toDouble()
         private const val CLOSE_ENOUGH_TO_CONTINUE_INTERACTING_WITH_TARGET = 2.0
+        
+        /** 箱子记忆清理间隔（1200 ticks） */
+        private const val CHEST_MEMORY_CLEANUP_INTERVAL = 1200L
 
         /**
          * 物品匹配模式
@@ -226,15 +229,19 @@ class SmartTransportItemsBetweenContainers(
             logger.debug("[tick] {} 的导航卡住。", mob.blockPosition())
         }
 
-        // 每20tick清理一次超出范围的记忆和过期的黑名单
+        // 每20tick清理一次超出范围的黑名单
         if (gameTime % 20L == 0L) {
             val memory = getOrCreateDeepMemory(mob)
-//            memory.clearOutOfRangeChest(
-//                mob.blockPosition(),
-//                getHorizontalSearchDistance(mob),
-//                getVerticalSearchDistance(mob)
-//            )
             memory.clearExpiredBlacklist(gameTime)
+        }
+        
+        // 每1200tick清理一次过期的箱子记忆
+        if (gameTime % CHEST_MEMORY_CLEANUP_INTERVAL == 0L) {
+            val memory = getOrCreateDeepMemory(mob)
+            val clearedCount = memory.clearExpiredChestMemories(gameTime)
+            if (clearedCount > 0) {
+                logger.debug("[tick] 清理了 {} 个过期的箱子记忆。", clearedCount)
+            }
         }
 
         val updated = updateTargetIfInvalid(serverLevel, mob, gameTime)
@@ -1215,7 +1222,8 @@ class SmartTransportItemsBetweenContainers(
 
         // 更新箱子记忆（排除Source Block）
         if (!isSourceBlock) {
-            getOrCreateDeepMemory(mob).updateChest(target.pos, target.container, ITEM_MATCH_MODE)
+            val gameTime = (mob.level() as ServerLevel).gameTime
+            getOrCreateDeepMemory(mob).updateChest(target.pos, target.container, ITEM_MATCH_MODE, gameTime)
         }
     }
 

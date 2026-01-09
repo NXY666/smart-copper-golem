@@ -24,11 +24,15 @@ data class CopperGolemDeepMemory(
     // tag <-> 箱子位置的双向映射（多个tag可能对应同一箱子）
     private val tagChestMap: BiMultiMap<TagKey<Item>, BlockPos> = BiMultiMap(),
     // 被拉黑的物品 -> 拉黑结束的游戏时间
-    private val blacklistedItems: MutableMap<Item, Long> = mutableMapOf()
+    private val blacklistedItems: MutableMap<Item, Long> = mutableMapOf(),
+    // 箱子位置 -> 最后访问时间（游戏tick）
+    private val chestLastAccessTime: MutableMap<BlockPos, Long> = mutableMapOf()
 ) {
     companion object {
         // 物品拉黑时长（游戏tick）
         const val BLACKLIST_DURATION_TICKS = 6000L
+        // 箱子记忆过期时间（一个游戏日 = 24000 ticks）
+        const val CHEST_MEMORY_EXPIRATION_TICKS = 24000L
 
         /**
          * 允许作为"同类物品"的物品标签
@@ -154,8 +158,9 @@ data class CopperGolemDeepMemory(
      * @param chestPos 箱子位置
      * @param container 箱子容器
      * @param matchMode 物品匹配模式（用于决定是否记录tag）
+     * @param currentGameTime 当前游戏时间（tick）
      */
-    fun updateChest(chestPos: BlockPos, container: Container, matchMode: SmartTransportItemsBetweenContainers.Companion.ItemMatchMode) {
+    fun updateChest(chestPos: BlockPos, container: Container, matchMode: SmartTransportItemsBetweenContainers.Companion.ItemMatchMode, currentGameTime: Long) {
         val items = mutableSetOf<Item>()
         val itemsWithSpace = mutableSetOf<Item>()
 
@@ -194,6 +199,9 @@ data class CopperGolemDeepMemory(
         // 先清除这个箱子之前的记忆
         clearChest(chestPos)
 
+        // 更新箱子的最后访问时间
+        chestLastAccessTime[chestPos] = currentGameTime
+
         // 对于每个物品，只有在箱子有足够空间时才记录这个箱子（允许覆盖旧记忆）
         for (item in items) {
             if (item in itemsWithSpace) {
@@ -221,6 +229,7 @@ data class CopperGolemDeepMemory(
         // BiMultiMap 会自动处理双向映射的清理
         itemChestMap.removeByValue(chestPos)
         tagChestMap.removeByValue(chestPos)
+        chestLastAccessTime.remove(chestPos)
     }
 
     /**
@@ -313,5 +322,24 @@ data class CopperGolemDeepMemory(
         blacklistedItems.entries.removeIf { (_, endTime) ->
             isBlacklistExpired(endTime, currentGameTime)
         }
+    }
+
+    /**
+     * 清除所有过期的箱子记忆
+     * 超过CHEST_MEMORY_EXPIRATION_TICKS未访问的箱子记忆将被清除
+     * 
+     * @param currentGameTime 当前游戏时间（tick）
+     * @return 清除的箱子数量
+     */
+    fun clearExpiredChestMemories(currentGameTime: Long): Int {
+        val expiredChests = chestLastAccessTime.entries.filter { (_, lastAccessTime) ->
+            currentGameTime - lastAccessTime > CHEST_MEMORY_EXPIRATION_TICKS
+        }.map { it.key }
+
+        expiredChests.forEach { chestPos ->
+            clearChest(chestPos)
+        }
+
+        return expiredChests.size
     }
 }
