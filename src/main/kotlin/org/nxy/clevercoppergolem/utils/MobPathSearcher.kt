@@ -154,9 +154,6 @@ object MobPathSearcher {
         val floorShape = below.getCollisionShape(level, belowPos)
         if (floorShape.isEmpty) return false
 
-        val upFace = floorShape.getFaceShape(Direction.UP)
-        if (upFace.isEmpty) return false
-
         // 计算真实站立高度（半砖/地毯/雪层都能兼容）
         val standY = belowPos.y + floorShape.max(Direction.Axis.Y)
 
