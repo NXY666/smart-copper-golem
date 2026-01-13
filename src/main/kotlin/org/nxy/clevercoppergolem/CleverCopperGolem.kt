@@ -1,7 +1,6 @@
 package org.nxy.clevercoppergolem
 
 import net.fabricmc.api.ModInitializer
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents
 import net.minecraft.core.BlockPos
 import net.minecraft.core.BlockPos.MutableBlockPos
 import net.minecraft.core.particles.DustParticleOptions
@@ -31,11 +30,11 @@ class CleverCopperGolem : ModInitializer {
     override fun onInitialize() {
         logger.debug("[onInitialize] 初始化 $MOD_ID ...")
 
-        ServerTickEvents.END_WORLD_TICK.register(ServerTickEvents.EndWorldTick { level: ServerLevel? ->
-            this.onWorldTick(
-                level!!
-            )
-        })
+//        ServerTickEvents.END_WORLD_TICK.register(ServerTickEvents.EndWorldTick { level: ServerLevel? ->
+//            this.onWorldTick(
+//                level!!
+//            )
+//        })
 
         // 注册自定义记忆模块类型
         ModMemoryModuleTypes.register(MOD_ID)
@@ -54,7 +53,7 @@ class CleverCopperGolem : ModInitializer {
             val pPos = player.blockPosition()
             val aabb = AABB(
                 (pPos.x - halfSize).toDouble(), 50.0, (pPos.z - halfSize).toDouble(),
-                (pPos.x + halfSize).toDouble(), 100.0, (pPos.z + halfSize).toDouble()
+                (pPos.x + halfSize).toDouble(), 130.0, (pPos.z + halfSize).toDouble()
             )
             mobs.addAll(
                 level.getEntitiesOfClass(

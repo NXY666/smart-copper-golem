@@ -1,145 +1,173 @@
 package org.nxy.clevercoppergolem.utils
 
+import it.unimi.dsi.fastutil.longs.LongArrayList
 import net.minecraft.core.BlockPos
+import net.minecraft.core.BlockPos.MutableBlockPos
+import net.minecraft.core.Direction
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.entity.Mob
+import net.minecraft.world.entity.PathfinderMob
 import net.minecraft.world.level.Level
-import net.minecraft.world.phys.AABB
-import net.minecraft.world.phys.Vec3
-import kotlin.math.abs
+import kotlin.math.max
+import kotlin.math.min
 
-/**
- * MC 1.21.11 (Mojang mappings) Kotlin 工具：
- * 以 center 为中心，在水平/垂直范围内寻找"可站立且头顶/身体空间无碰撞"的落脚点。
- * 找到后返回该位置坐标；全部失败返回 null。
- *
- * 搜索优先级（从近到远逐步扩散）：
- * 1) 先按“切比雪夫距离(chebyshev) = max(|dx|,|dz|) 的水平环半径 r”从小到大扩散（r=0 为中心）。
- * 2) 同一 r 内，对 (dx,dz) 按曼哈顿距离 |dx|+|dz| 从小到大排序（更接近中心的点更早被尝试）。
- * 3) 同一 (dx,dz) 下，对 dy 按 |dy| 从小到大（先同层，再向上下扩散：0, +1, -1, +2, -2...）。
- */
+
 object MobPathSearcher {
     const val HORIZONTAL_INTERACTION_RANGE = 1
-    const val VERTICAL_INTERACTION_RANGE = 3
+    const val VERTICAL_INTERACTION_RANGE = 4
 
-    /**
-     * @param targetBlockPos 搜索中心方块坐标（候选落脚点用“脚下方块格”表示）
-     * @param horizontalRange 水平搜索半径（x/z）
-     * @param verticalRange 垂直搜索半径（y）
-     * @param mob 需要寻路的 Mob
-     * @return 找到的可交互位置坐标，如果没有找到则返回 null
-     */
     fun findInteractablePos(
         targetBlockPos: BlockPos,
-        horizontalRange: Int,
-        verticalRange: Int,
-        mob: Mob
-    ): BlockPos? {
+        mob: PathfinderMob
+    ): List<BlockPos> {
         val level: Level = mob.level()
-        if (level !is ServerLevel) return null
+        if (level !is ServerLevel) return emptyList()
 
-        // 先尝试直接到达中心点
-        // 直接创建 Path 失败，说明中心点不可达，提前返回 null
-        val directPath = mob.navigation.createPath(targetBlockPos, 1) ?: return null
-
-        val endNode = directPath.endNode
-        if (directPath.canReach() &&
-            endNode != null &&
-            BlockVisibilityChecker.isBlockVisible(
-                level,
-                Vec3(endNode.x.toDouble(), (endNode.y.toDouble() + mob.eyeHeight.toInt()), endNode.z.toDouble()),
-                targetBlockPos
+        val collectResult = collect(
+            mob, targetBlockPos,
+            targetBlockPos.offset(
+                -HORIZONTAL_INTERACTION_RANGE,
+                -VERTICAL_INTERACTION_RANGE,
+                -HORIZONTAL_INTERACTION_RANGE
+            ),
+            targetBlockPos.offset(
+                HORIZONTAL_INTERACTION_RANGE,
+                VERTICAL_INTERACTION_RANGE,
+                HORIZONTAL_INTERACTION_RANGE
             )
-        ) {
-            return targetBlockPos
+        ) ?: return emptyList()
+
+        val out = mutableListOf<BlockPos>()
+        for (longPos in collectResult) {
+            out.add(BlockPos.of(longPos))
         }
-
-        val hr = horizontalRange.coerceAtLeast(0)
-        val vr = verticalRange.coerceAtLeast(0)
-
-        val nav = mob.navigation
-
-        val cx = targetBlockPos.x
-        val cy = targetBlockPos.y
-        val cz = targetBlockPos.z
-
-        // 水平环半径 r 从 0 向外扩散
-        for (r in 0..hr) {
-            // 收集当前 r 的所有 (dx,dz) 点（方形环的边界；r=0 只有 (0,0)）
-            val offsets = ArrayList<Pair<Int, Int>>(if (r == 0) 1 else 8 * r)
-            for (dx in -r..r) {
-                for (dz in -r..r) {
-                    if (r != 0 && abs(dx) != r && abs(dz) != r) continue
-                    offsets.add(dx to dz)
-                }
-            }
-
-            // 同一 r 内：更接近中心优先（曼哈顿距离小的在前），再做稳定排序
-            offsets.sortWith(
-                compareBy(
-                    { abs(it.first) + abs(it.second) },
-                    { abs(it.first) },
-                    { abs(it.second) },
-                    { it.first },
-                    { it.second }
-                )
-            )
-
-            for ((dx, dz) in offsets) {
-                // dy：先 0，再 +1,-1，再 +2,-2 ...（按 |dy| 递增）
-                for (ady in 0..vr) {
-                    val dyCandidates = if (ady == 0) intArrayOf(0) else intArrayOf(ady, -ady)
-                    for (dy in dyCandidates) {
-                        val feetPos = BlockPos(cx + dx, cy + dy, cz + dz)
-
-                        // 1) 可站立（Navigation 默认稳定落脚点判定）
-                        if (!nav.isStableDestination(feetPos)) continue
-
-                        // 2) 头顶/身体空间无碰撞（随 mob AABB 高度变化）
-                        if (!isClearForMobToStand(level, mob, feetPos)) continue
-
-                        val eyePos = Vec3(
-                            feetPos.x.toDouble(),
-                            feetPos.y.toDouble() + mob.eyeHeight,
-                            feetPos.z.toDouble()
-                        )
-
-                        // 3) 检查是否可以看到目标方块
-                        if (!BlockVisibilityChecker.isBlockVisible(
-                                level,
-                                eyePos,
-                                targetBlockPos
-                            )
-                        ) {
-                            continue
-                        }
-
-                        // 3) 尝试创建 Path（成功立即返回；失败继续）
-                        val path = nav.createPath(feetPos, 0)
-                        if (path != null) {
-                            return feetPos
-                        }
-                    }
-                }
-            }
-        }
-
-        return null
+        return out
     }
 
     /**
-     * feetPos 代表 mob 的“脚下方块格”。
-     * 将 mob 当前 AABB 平移到目标 (x+0.5, y, z+0.5) 上，再用 level.noCollision 做碰撞检测。
+     * 扫描 [min,max]（含边界）长方体内所有“表面可站点”（每列可有多个楼层）。
+     * 返回：BlockPos.asLong() 数组。
+     *
+     * 这里的“点”定义为：某段“有碰撞形状的方块堆”的顶面上方那一格（feetPos），
+     * 并且 mob 能站上去（地面可承重 + 平移碰撞箱 noCollision）。
      */
-    fun isClearForMobToStand(level: Level, mob: Mob, feetPos: BlockPos): Boolean {
-        val tx = feetPos.x + 0.5
-        val ty = feetPos.y.toDouble()
-        val tz = feetPos.z + 0.5
+    fun collect(mob: PathfinderMob, targetBlockPos: BlockPos, min: BlockPos, max: BlockPos): LongArray? {
+        val level = mob.level()
+        if (level !is ServerLevel) return null
 
-        val moved: AABB = mob.boundingBox.move(
-            tx - mob.x,
-            ty - mob.y,
-            tz - mob.z
+        val minX = min(min.x, max.x)
+        val minY = min(min.y, max.y)
+        val minZ = min(min.z, max.z)
+        val maxX = max(min.x, max.x)
+        val maxY = max(min.y, max.y)
+        val maxZ = max(min.z, max.z)
+
+        val out = LongArrayList()
+        val pos = MutableBlockPos()
+
+        for (x in minX..maxX) {
+            for (z in minZ..maxZ) {
+                // y 扫描：只在 “solid-run -> air” 的边界处做一次 canStandAt
+
+                var y = minY
+
+                while (y <= maxY) {
+                    // 1) 找到下一段 solid-run 的起点（第一个“有碰撞形状”的方块）
+                    while (y <= maxY) {
+                        pos.set(x, y, z)
+                        if (hasCollision(level, pos)) break
+                        y++
+                    }
+                    if (y > maxY) break
+
+                    // 2) 跳过这一整段 solid-run，直到第一个“无碰撞形状”的方块（即 solid-run 顶部上方的空气/空隙）
+                    while (y <= maxY) {
+                        pos.set(x, y, z)
+                        if (!hasCollision(level, pos)) break
+                        y++
+                    }
+                    if (y > maxY) break
+
+                    // 3) 现在 y 是“solid-run 顶部上方的第一格”（feetPos）
+                    // feetPos 本身在范围内；它的 belowPos 就是顶面方块
+                    val feetBlockPos = BlockPos(x, y, z)
+                    if (!canStandAt(mob, feetBlockPos)) {
+                        y++
+                        continue
+                    }
+
+                    // 获取下一格方块的碰撞箱
+                    val abovePos = feetBlockPos.below()
+                    val aboveState = level.getBlockState(abovePos)
+                    val aboveShape = aboveState.getCollisionShape(level, abovePos)
+                    val aboveAabbs = aboveShape.toAabbs()
+
+                    // 4) 需要站在任何一个碰撞箱上可视
+                    if (
+                        !aboveAabbs.any { aboveAabb ->
+                            val aboveAabbTopCenter =
+                                aboveAabb.bottomCenter.add(x.toDouble(), y + aboveAabb.ysize, z.toDouble())
+                            val eyePos = MobUtil.addMobEyeHeightToFeetPosY(mob, aboveAabbTopCenter)
+                            BlockVisibilityChecker.isBlockVisible(level, eyePos, targetBlockPos)
+                        }
+                    ) {
+                        y++
+                        continue
+                    }
+
+                    // 5) 记录该点
+                    out.add(feetBlockPos.asLong())
+                    y++
+                }
+            }
+        }
+
+        return out.toLongArray()
+    }
+
+    private fun hasCollision(level: Level, pos: BlockPos): Boolean {
+        val st = level.getBlockState(pos)
+        // 以“碰撞形状是否为空”作为 solid/air 分界（比 isAir 更泛化）
+        return !st.getCollisionShape(level, pos).isEmpty
+    }
+
+    /**
+     * feetPos 视为“脚底所在的那一格”（通常是某表面上方第一格）。
+     * 要求：
+     * - chunk 已加载、在世界边界内
+     * - 脚下方块上表面可承重（isFaceSturdy UP）
+     * - 把 mob 的 AABB 平移到该表面高度后 noCollision
+     */
+    fun canStandAt(mob: Mob, feetPos: BlockPos): Boolean {
+        val level = mob.level()
+
+        // 用 Level#isLoaded(BlockPos) 替代 hasChunkAt(BlockPos)
+        if (!level.isLoaded(feetPos)) return false
+        if (!level.worldBorder.isWithinBounds(feetPos)) return false
+
+        val belowPos = feetPos.below()
+        if (!level.isLoaded(belowPos)) return false
+
+        val below = level.getBlockState(belowPos)
+
+        // 用地面碰撞形状的 topY 计算真实站立高度（兼容半砖/地毯等）
+        val floorShape = below.getCollisionShape(level, belowPos)
+        if (floorShape.isEmpty) return false
+
+        val upFace = floorShape.getFaceShape(Direction.UP)
+        if (upFace.isEmpty) return false
+
+        // 计算真实站立高度（半砖/地毯/雪层都能兼容）
+        val standY = belowPos.y + floorShape.max(Direction.Axis.Y)
+
+        val targetX = feetPos.x + 0.5
+        val targetZ = feetPos.z + 0.5
+
+        val bb = mob.boundingBox
+        val moved = bb.move(
+            targetX - mob.x,
+            standY - mob.y,
+            targetZ - mob.z
         )
 
         return level.noCollision(mob, moved)

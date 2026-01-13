@@ -102,7 +102,7 @@ object BlockVisibilityChecker {
         blockPos: BlockPos,
         blockState: BlockState? = null
     ): RaycastResult {
-        return raycastToBlock(level, entity.boundingBox.center, blockPos, blockState)
+        return raycastToBlock(level, entity.eyePosition, blockPos, blockState)
     }
 
     /**
@@ -162,7 +162,7 @@ object BlockVisibilityChecker {
         blockPos: BlockPos,
         blockState: BlockState? = null
     ): List<Vec3> {
-        return raycastToBlockFaces(level, entity.boundingBox.center, blockPos, blockState)
+        return raycastToBlockFaces(level, entity.eyePosition, blockPos, blockState)
     }
 
     /**
@@ -222,7 +222,7 @@ object BlockVisibilityChecker {
         blockPos: BlockPos,
         blockState: BlockState? = null
     ): List<Vec3> {
-        return raycastToBlockCorners(level, entity.boundingBox.center, blockPos, blockState)
+        return raycastToBlockCorners(level, entity.eyePosition, blockPos, blockState)
     }
 
     /**
@@ -290,7 +290,7 @@ object BlockVisibilityChecker {
         blockPos: BlockPos,
         blockState: BlockState? = null
     ): Boolean {
-        return isBlockVisible(level, entity.boundingBox.center, blockPos, blockState)
+        return isBlockVisible(level, entity.eyePosition, blockPos, blockState)
     }
 
     /**
@@ -348,7 +348,7 @@ object BlockVisibilityChecker {
         blockPos: BlockPos,
         blockState: BlockState? = null
     ): Boolean {
-        return hasVisibleFace(level, entity.boundingBox.center, blockPos, blockState)
+        return hasVisibleFace(level, entity.eyePosition, blockPos, blockState)
     }
 
     /**
@@ -406,7 +406,7 @@ object BlockVisibilityChecker {
         blockPos: BlockPos,
         blockState: BlockState? = null
     ): Boolean {
-        return hasVisibleCorner(level, entity.boundingBox.center, blockPos, blockState)
+        return hasVisibleCorner(level, entity.eyePosition, blockPos, blockState)
     }
 
     /**

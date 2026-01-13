@@ -27,6 +27,7 @@ import org.jspecify.annotations.Nullable;
 import org.nxy.clevercoppergolem.ContainerHelper;
 import org.nxy.clevercoppergolem.ModMemoryModuleTypes;
 import org.nxy.clevercoppergolem.SmartTransportItemsBetweenContainers;
+import org.nxy.clevercoppergolem.TransportItemTarget;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Unique;
@@ -228,9 +229,9 @@ public abstract class CopperGolemAiMixin {
 	}
 
 	@Unique
-	private static Predicate<SmartTransportItemsBetweenContainers.TransportItemTarget> shouldQueueForTarget() {
+	private static Predicate<TransportItemTarget> shouldQueueForTarget() {
 		return transportItemTarget -> {
-			if (transportItemTarget.getBlockEntity() instanceof ChestBlockEntity chestBlockEntity) {
+			if (transportItemTarget.getTargetBlockEntity() instanceof ChestBlockEntity chestBlockEntity) {
 				return !chestBlockEntity.getEntitiesWithContainerOpen().isEmpty();
 			}
 			return false;
