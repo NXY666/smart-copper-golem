@@ -188,7 +188,7 @@ class SmartTransportItemsBetweenContainers(
     // 卡住检测器
     private var stuckDetector = StuckDetector()
 
-    override fun start(serverLevel: ServerLevel, mob: PathfinderMob, l: Long) {
+    override fun start(level: ServerLevel, mob: PathfinderMob, l: Long) {
         val navigation = mob.navigation
         if (navigation is GroundPathNavigation) {
             navigation.setCanPathToTargetsBelowSurface(true)
@@ -212,11 +212,11 @@ class SmartTransportItemsBetweenContainers(
         return hasTransportFailed
     }
 
-    override fun checkExtraStartConditions(serverLevel: ServerLevel, mob: PathfinderMob): Boolean {
+    override fun checkExtraStartConditions(level: ServerLevel, mob: PathfinderMob): Boolean {
         return !mob.isLeashed
     }
 
-    override fun canStillUse(serverLevel: ServerLevel, mob: PathfinderMob, l: Long): Boolean {
+    override fun canStillUse(level: ServerLevel, mob: PathfinderMob, l: Long): Boolean {
         return mob.brain.getMemory(MemoryModuleType.TRANSPORT_ITEMS_COOLDOWN_TICKS).isEmpty &&
                 !mob.isPanicking &&
                 !mob.isLeashed
@@ -224,7 +224,7 @@ class SmartTransportItemsBetweenContainers(
 
     override fun timedOut(l: Long): Boolean = false
 
-    override fun tick(serverLevel: ServerLevel, mob: PathfinderMob, gameTime: Long) {
+    override fun tick(level: ServerLevel, mob: PathfinderMob, gameTime: Long) {
         if (mob.navigation.isStuck) {
             logger.debug("[tick] {} 的导航卡住。", mob.blockPosition())
         }
@@ -244,15 +244,15 @@ class SmartTransportItemsBetweenContainers(
             }
         }
 
-        val updated = updateTargetIfInvalid(serverLevel, mob, gameTime)
+        val updated = updateTargetIfInvalid(level, mob, gameTime)
 
         val currentTarget = target ?: return
 
         if (!updated) {
             when (state) {
-                TransportItemState.QUEUING -> onQueuingForTarget(currentTarget, serverLevel, mob)
-                TransportItemState.TRAVELLING -> onTravelToTarget(currentTarget, serverLevel, mob)
-                TransportItemState.INTERACTING -> onReachedTarget(currentTarget, serverLevel, mob, gameTime)
+                TransportItemState.QUEUING -> onQueuingForTarget(currentTarget, level, mob)
+                TransportItemState.TRAVELLING -> onTravelToTarget(currentTarget, level, mob)
+                TransportItemState.INTERACTING -> onReachedTarget(currentTarget, level, mob, gameTime)
             }
         }
     }
@@ -287,8 +287,8 @@ class SmartTransportItemsBetweenContainers(
         return path
     }
 
-    private fun updateTargetIfInvalid(serverLevel: ServerLevel, mob: PathfinderMob, gameTime: Long): Boolean {
-        if (isTargetValid(serverLevel, mob)) return false
+    private fun updateTargetIfInvalid(level: ServerLevel, mob: PathfinderMob, gameTime: Long): Boolean {
+        if (isTargetValid(level, mob)) return false
 
         if (target == null) {
             logger.debug("[updateTargetIfInvalid] 当前没有目标，开始寻找新目标。")
@@ -297,20 +297,20 @@ class SmartTransportItemsBetweenContainers(
             stopTargetingCurrentTarget(mob)
         }
 
-        val optionalTarget = getTransportTarget(serverLevel, mob)
+        val optionalTarget = getTransportTarget(level, mob)
         if (optionalTarget.isPresent) {
             val newTarget = optionalTarget.get()
 
             // 激活路径计算
             if (!newTarget.activatePath(mob)) {
                 logger.debug("[updateTargetIfInvalid] 目标 {} 激活失败，标记为不可达。", newTarget.pos)
-                markVisitedBlockPosAsUnreachable(mob, serverLevel, newTarget.pos)
+                markVisitedBlockPosAsUnreachable(mob, level, newTarget.pos)
                 return true
             }
 
             target = newTarget
             onStartTravelling(mob)
-            setVisitedBlockPos(mob, serverLevel, target!!.pos)
+            setVisitedBlockPos(mob, level, target!!.pos)
             return true
         }
 
@@ -327,24 +327,21 @@ class SmartTransportItemsBetweenContainers(
         }
 
         if (target == null) {
-            stop(serverLevel, mob, gameTime)
+            stop(level, mob, gameTime)
         }
 
         return true
     }
 
-    private fun getTransportTarget(
-        serverLevel: ServerLevel,
-        mob: PathfinderMob
-    ): Optional<TransportItemTarget> {
+    private fun getTransportTarget(level: ServerLevel, mob: PathfinderMob): Optional<TransportItemTarget> {
         // 坐车时完全使用原版逻辑，不使用记忆加速
         if (mob.isPassenger) {
-            return scanDestinationBlock(serverLevel, mob)
+            return scanDestinationBlock(level, mob)
         }
 
         val handItem = mob.mainHandItem
         val memory = getOrCreateDeepMemory(mob)
-        val currentGameTime = serverLevel.gameTime
+        val currentGameTime = level.gameTime
 
         // 如果手上有物品且不是返回源箱子，检查记忆（DestinationBlock逻辑）
         if (!handItem.isEmpty && !isReturningToSourceBlock(mob)) {
@@ -354,7 +351,7 @@ class SmartTransportItemsBetweenContainers(
             if (memory.isItemBlocked(item, currentGameTime)) {
                 // 物品被拉黑，返回铜箱子
                 hasTransportFailed = true
-                return scanSourceBlock(serverLevel, mob)
+                return scanSourceBlock(level, mob)
             }
 
             // 检查记忆中是否有这个物品对应的箱子（带范围验证）
@@ -367,7 +364,7 @@ class SmartTransportItemsBetweenContainers(
             )
             if (rememberedChest != null) {
                 // 验证这个箱子是否仍然有效
-                val targetOpt = createValidTargetByBlockPos(serverLevel, mob, rememberedChest)
+                val targetOpt = createValidTargetByBlockPos(level, mob, rememberedChest)
                 if (targetOpt.isPresent) {
                     return targetOpt
                 }
@@ -375,9 +372,9 @@ class SmartTransportItemsBetweenContainers(
         }
 
         return if (isReturningToSourceBlock(mob)) {
-            scanSourceBlock(serverLevel, mob)
+            scanSourceBlock(level, mob)
         } else {
-            scanDestinationBlock(serverLevel, mob)
+            scanDestinationBlock(level, mob)
         }
     }
 
@@ -407,7 +404,7 @@ class SmartTransportItemsBetweenContainers(
             )
         } else {
             isDestinationBlockValidToPick(
-                mob, level, target,
+                level, mob, target,
                 visitedPositions,
                 unreachablePositions
             )
@@ -417,7 +414,7 @@ class SmartTransportItemsBetweenContainers(
         return if (result) Optional.of(target) else Optional.empty()
     }
 
-    private fun scanSourceBlock(serverLevel: ServerLevel, mob: PathfinderMob): Optional<TransportItemTarget> {
+    private fun scanSourceBlock(level: ServerLevel, mob: PathfinderMob): Optional<TransportItemTarget> {
         // 找铜箱子（源箱子）
         val aabb = getTargetSearchArea(mob)
         val visitedPositions = getVisitedPositions(mob)
@@ -433,7 +430,7 @@ class SmartTransportItemsBetweenContainers(
         ).toList()
 
         for (chunkPos in chunkPosList) {
-            val chunk = serverLevel.chunkSource.getChunkNow(chunkPos.x, chunkPos.z) ?: continue
+            val chunk = level.chunkSource.getChunkNow(chunkPos.x, chunkPos.z) ?: continue
 
             for (blockEntity in chunk.blockEntities.values) {
                 if (blockEntity !is BaseContainerBlockEntity) continue
@@ -450,7 +447,7 @@ class SmartTransportItemsBetweenContainers(
                 if (!sourceBlockType.test(tempBlockState)) continue
 
                 // 检查位置（此处只需检查位置，不需要完整验证）
-                val tempGlobalPos = GlobalPos(serverLevel.dimension(), chestPos)
+                val tempGlobalPos = GlobalPos(level.dimension(), chestPos)
                 if (visitedPositions.contains(tempGlobalPos) || unreachablePositions.contains(tempGlobalPos)) continue
 
                 // 加入历史集合
@@ -460,15 +457,15 @@ class SmartTransportItemsBetweenContainers(
 
         // 筛选出所有有效的箱子（仅本次使用）
         val validChests = historyChests.filter { chestPos ->
-            val blockEntity = serverLevel.getBlockEntity(chestPos)
+            val blockEntity = level.getBlockEntity(chestPos)
             if (blockEntity !is BaseContainerBlockEntity) return@filter false
 
             val target = TransportItemTarget.createTarget(
-                blockEntity, serverLevel
+                blockEntity, level
             ) ?: return@filter false
 
             isSourceBlockValidToPick(
-                serverLevel,
+                level,
                 target,
                 visitedPositions,
                 unreachablePositions
@@ -490,59 +487,13 @@ class SmartTransportItemsBetweenContainers(
         mob.brain.setMemory(ModMemoryModuleTypes.CHEST_HISTORY, historyChests)
 
         // 返回选中的箱子（已验证有效）
-        val blockEntity = serverLevel.getBlockEntity(selectedChestPos)
+        val blockEntity = level.getBlockEntity(selectedChestPos)
         if (blockEntity !is BaseContainerBlockEntity) return Optional.empty()
 
         val target = TransportItemTarget.createTarget(
-            blockEntity, serverLevel
+            blockEntity, level
         ) ?: return Optional.empty()
         return Optional.of(target)
-    }
-
-    /**
-     * 通过路径测试选择最优箱子
-     * 从候选箱子中选择最近的5个进行路径测试，优先选择路径直达的箱子
-     * @param candidates 所有有效的箱子候选列表
-     * @param mob 寻路实体
-     * @return 选中的箱子候选
-     */
-    private fun selectChestByPath(candidates: List<BlockPos>, mob: PathfinderMob): BlockPos {
-        // 按距离排序，取最近的5个（或更少）
-        val mobPos = mob.position()
-        val sortedCandidates = candidates.sortedBy { it.distToCenterSqr(mobPos) }
-        val topCandidates = sortedCandidates.take(5)
-
-        logger.debug(
-            "[selectChestByPath] 从 {} 个候选中选择最近的 {} 个进行路径测试。",
-            candidates.size,
-            topCandidates.size
-        )
-
-        // 收集最近5个箱子的位置
-        val topPositions = topCandidates.toSet()
-
-        // 创建到这些位置的路径
-        val path = mob.navigation.createPath(topPositions, 1)
-
-        if (path != null) {
-            // 获取路径目标
-            val pathTarget: BlockPos = path.target
-
-            // 查找路径目标对应的候选箱子
-            val targetCandidate = topCandidates.firstOrNull { it == pathTarget }
-
-            if (targetCandidate != null) {
-                logger.debug("[selectChestByPath] 路径选择了箱子 {}。", pathTarget)
-                return targetCandidate
-            }
-
-            logger.debug("[selectChestByPath] 路径目标 {} 不在候选列表中，选择距离最近的箱子。", pathTarget)
-        } else {
-            logger.debug("[selectChestByPath] 无法创建路径，选择距离最近的箱子。")
-        }
-
-        // 没有找到路径目标对应的箱子，或路径创建失败，选择距离最近的
-        return topCandidates[0]
     }
 
     /**
@@ -578,8 +529,7 @@ class SmartTransportItemsBetweenContainers(
     }
 
     private fun isSourceBlockValidToPick(
-        level: Level,
-        target: TransportItemTarget,
+        level: Level, target: TransportItemTarget,
         visitedPositions: Set<GlobalPos>,
         unreachablePositions: Set<GlobalPos>
     ): Boolean {
@@ -600,10 +550,7 @@ class SmartTransportItemsBetweenContainers(
         return true
     }
 
-    private fun scanDestinationBlock(
-        level: ServerLevel,
-        mob: PathfinderMob
-    ): Optional<TransportItemTarget> {
+    private fun scanDestinationBlock(level: ServerLevel, mob: PathfinderMob): Optional<TransportItemTarget> {
         val targetSearchArea = getTargetSearchArea(mob)
         val visitedPositions = getVisitedPositions(mob)
         val unreachablePositions = getUnreachablePositions(mob)
@@ -661,7 +608,7 @@ class SmartTransportItemsBetweenContainers(
             // 验证箱子是否有效
             if (
                 !isDestinationBlockValidToPick(
-                    mob, level, target,
+                    level, mob, target,
                     visitedPositions,
                     unreachablePositions
                 )
@@ -707,10 +654,54 @@ class SmartTransportItemsBetweenContainers(
         return Optional.of(selectedTarget)
     }
 
+    /**
+     * 通过路径测试选择最优箱子
+     * 从候选箱子中选择最近的5个进行路径测试，优先选择路径直达的箱子
+     * @param candidates 所有有效的箱子候选列表
+     * @param mob 寻路实体
+     * @return 选中的箱子候选
+     */
+    private fun selectChestByPath(candidates: List<BlockPos>, mob: PathfinderMob): BlockPos {
+        // 按距离排序，取最近的5个（或更少）
+        val mobPos = mob.position()
+        val sortedCandidates = candidates.sortedBy { it.distToCenterSqr(mobPos) }
+        val topCandidates = sortedCandidates.take(5)
+
+        logger.debug(
+            "[selectChestByPath] 从 {} 个候选中选择最近的 {} 个进行路径测试。",
+            candidates.size,
+            topCandidates.size
+        )
+
+        // 收集最近5个箱子的位置
+        val topPositions = topCandidates.toSet()
+
+        // 创建到这些位置的路径
+        val path = mob.navigation.createPath(topPositions, 1)
+
+        if (path != null) {
+            // 获取路径目标
+            val pathTarget: BlockPos = path.target
+
+            // 查找路径目标对应的候选箱子
+            val targetCandidate = topCandidates.firstOrNull { it == pathTarget }
+
+            if (targetCandidate != null) {
+                logger.debug("[selectChestByPath] 路径选择了箱子 {}。", pathTarget)
+                return targetCandidate
+            }
+
+            logger.debug("[selectChestByPath] 路径目标 {} 不在候选列表中，选择距离最近的箱子。", pathTarget)
+        } else {
+            logger.debug("[selectChestByPath] 无法创建路径，选择距离最近的箱子。")
+        }
+
+        // 没有找到路径目标对应的箱子，或路径创建失败，选择距离最近的
+        return topCandidates[0]
+    }
+
     private fun isDestinationBlockValidToPick(
-        mob: PathfinderMob,
-        level: Level,
-        target: TransportItemTarget,
+        level: Level, mob: PathfinderMob, target: TransportItemTarget,
         visitedPositions: Set<GlobalPos>,
         unreachablePositions: Set<GlobalPos>
     ): Boolean {
@@ -723,7 +714,7 @@ class SmartTransportItemsBetweenContainers(
                 unreachablePositions
             )
         ) {
-            getConnectedTargets(target, level)
+            getConnectedTargets(level, target)
                 .map { GlobalPos(level.dimension(), it.pos) }
                 .anyMatch { visitedPositions.contains(it) || unreachablePositions.contains(it) }
             return false
@@ -795,7 +786,7 @@ class SmartTransportItemsBetweenContainers(
 
         if (
             state == TransportItemState.TRAVELLING &&
-            !isTravellingPathValid(level, currentTarget, mob)
+            !isTravellingPathValid(level, mob, currentTarget)
         ) {
             logger.debug("[isTargetValid] 前往目标 {} 的路径不再有效。", currentTarget.pos)
             markVisitedBlockPosAsUnreachable(mob, level, currentTarget.pos)
@@ -805,11 +796,7 @@ class SmartTransportItemsBetweenContainers(
         return true
     }
 
-    private fun isTravellingPathValid(
-        level: Level,
-        target: TransportItemTarget,
-        mob: PathfinderMob
-    ): Boolean {
+    private fun isTravellingPathValid(level: Level, mob: PathfinderMob, target: TransportItemTarget): Boolean {
         // 如果在天上，迟早会掉下去，先不验证路径
         // 研究期间跳过详细验证，避免过早标记不可达
         if (!MobUtil.canUpdatePath(mob) || target.isResearching) {
@@ -874,10 +861,7 @@ class SmartTransportItemsBetweenContainers(
         return target.targetBlockEntity == level.getBlockEntity(target.pos)
     }
 
-    private fun getConnectedTargets(
-        target: TransportItemTarget,
-        level: Level
-    ): Stream<TransportItemTarget> {
+    private fun getConnectedTargets(level: Level, target: TransportItemTarget): Stream<TransportItemTarget> {
         val chestType = target.targetBlockState.getValueOrElse(ChestBlock.TYPE, ChestType.SINGLE)
         return if (chestType != ChestType.SINGLE) {
             val connectedPos = ChestBlock.getConnectedBlockPos(target.pos, target.targetBlockState)
@@ -924,7 +908,7 @@ class SmartTransportItemsBetweenContainers(
         visitedPositions: Set<GlobalPos>,
         unreachablePositions: Set<GlobalPos>
     ): Boolean {
-        return getConnectedTargets(target, level)
+        return getConnectedTargets(level, target)
             .map { GlobalPos(level.dimension(), it.pos) }
             .anyMatch { visitedPositions.contains(it) || unreachablePositions.contains(it) }
     }
@@ -1010,7 +994,7 @@ class SmartTransportItemsBetweenContainers(
     }
 
     private fun isAnotherMobInteractingWithTarget(level: Level, target: TransportItemTarget): Boolean {
-        return getConnectedTargets(target, level).anyMatch(shouldQueueForTarget)
+        return getConnectedTargets(level, target).anyMatch(shouldQueueForTarget)
     }
 
     private fun isPickingUpItems(mob: PathfinderMob): Boolean {
@@ -1502,7 +1486,7 @@ class SmartTransportItemsBetweenContainers(
         hasTransportFailed = false
     }
 
-    override fun stop(serverLevel: ServerLevel, mob: PathfinderMob, gameTime: Long) {
+    override fun stop(level: ServerLevel, mob: PathfinderMob, gameTime: Long) {
         onStartTravelling(mob)
         val navigation = mob.navigation
         if (navigation is GroundPathNavigation) {
