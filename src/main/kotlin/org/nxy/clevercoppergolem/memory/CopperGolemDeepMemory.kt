@@ -1,4 +1,4 @@
-package org.nxy.clevercoppergolem
+package org.nxy.clevercoppergolem.memory
 
 import net.fabricmc.fabric.api.tag.convention.v2.ConventionalItemTags
 import net.minecraft.core.BlockPos
@@ -7,6 +7,7 @@ import net.minecraft.tags.ItemTags
 import net.minecraft.tags.TagKey
 import net.minecraft.world.Container
 import net.minecraft.world.item.Item
+import org.nxy.clevercoppergolem.SmartTransportItemsBetweenContainers
 import org.nxy.clevercoppergolem.util.BiMultiMap
 import kotlin.math.abs
 

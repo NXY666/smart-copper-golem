@@ -1,4 +1,4 @@
-package org.nxy.clevercoppergolem
+package org.nxy.clevercoppergolem.memory
 
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Registry

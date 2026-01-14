@@ -6,6 +6,7 @@ import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.entity.ai.behavior.Behavior
 import net.minecraft.world.entity.ai.memory.MemoryStatus
 import net.minecraft.world.entity.animal.golem.CopperGolem
+import org.nxy.clevercoppergolem.memory.ModMemoryModuleTypes
 
 /**
  * 铜傀儡记忆同步行为

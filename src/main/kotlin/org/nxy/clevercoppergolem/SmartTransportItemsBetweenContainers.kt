@@ -28,7 +28,9 @@ import net.minecraft.world.level.pathfinder.WalkNodeEvaluator
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import org.apache.commons.lang3.function.TriConsumer
-import org.nxy.clevercoppergolem.CopperGolemDeepMemory.Companion.ALLOWED_ITEM_CATEGORY_TAGS
+import org.nxy.clevercoppergolem.memory.CopperGolemDeepMemory
+import org.nxy.clevercoppergolem.memory.CopperGolemDeepMemory.Companion.ALLOWED_ITEM_CATEGORY_TAGS
+import org.nxy.clevercoppergolem.memory.ModMemoryModuleTypes
 import org.nxy.clevercoppergolem.util.BlockVisibilityChecker
 import org.nxy.clevercoppergolem.util.MobPathSearcher.HORIZONTAL_INTERACTION_RANGE
 import org.nxy.clevercoppergolem.util.MobPathSearcher.VERTICAL_INTERACTION_RANGE
