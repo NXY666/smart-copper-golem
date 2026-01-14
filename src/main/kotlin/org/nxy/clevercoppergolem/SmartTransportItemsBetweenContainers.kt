@@ -188,6 +188,9 @@ class SmartTransportItemsBetweenContainers(
     // 卡住检测器
     private var stuckDetector = StuckDetector()
 
+    // 上一轮扫描是否成功抵达过目标（用于重试unreachable逻辑）
+    private var lastRoundSucceeded = true
+
     override fun start(level: ServerLevel, mob: PathfinderMob, l: Long) {
         val navigation = mob.navigation
         if (navigation is GroundPathNavigation) {
@@ -210,6 +213,10 @@ class SmartTransportItemsBetweenContainers(
 
     private fun isFailToTransportItems(): Boolean {
         return hasTransportFailed
+    }
+
+    private fun shouldRetryUnreachablePositions(unreachablePositions: Set<GlobalPos>): Boolean {
+        return unreachablePositions.isNotEmpty() && lastRoundSucceeded
     }
 
     override fun checkExtraStartConditions(level: ServerLevel, mob: PathfinderMob): Boolean {
@@ -312,6 +319,24 @@ class SmartTransportItemsBetweenContainers(
             onStartTravelling(mob)
             setVisitedBlockPos(mob, level, target!!.pos)
             return true
+        }
+
+        // 找不到目标时，检查是否可以重试unreachable的位置
+        val unreachablePositions = getUnreachablePositions(mob)
+        if (shouldRetryUnreachablePositions(unreachablePositions)) {
+            // 上一轮有成功过，且存在unreachable的位置，清除后重试
+            logger.debug(
+                "[updateTargetIfInvalid] 所有可达目标已遍历，清除 {} 个不可达位置重新扫描。",
+                unreachablePositions.size
+            )
+            mob.brain.eraseMemory(MemoryModuleType.UNREACHABLE_TRANSPORT_BLOCK_POSITIONS)
+            lastRoundSucceeded = false  // 标记本轮开始，如果本轮还是失败就真的失败了
+            return true  // 返回true触发重新扫描
+        }
+
+        // 如果lastRoundSucceeded为false，说明上一轮清除unreachable后也没成功，这次真的失败了
+        if (!lastRoundSucceeded) {
+            logger.debug("[updateTargetIfInvalid] 重试unreachable后仍然失败，确认无可用目标。")
         }
 
         if (isReturningToSourceBlock(mob)) {
@@ -1470,6 +1495,9 @@ class SmartTransportItemsBetweenContainers(
         mob.brain.eraseMemory(MemoryModuleType.VISITED_BLOCK_POSITIONS)
         mob.brain.eraseMemory(MemoryModuleType.UNREACHABLE_TRANSPORT_BLOCK_POSITIONS)
         mob.brain.eraseMemory(ModMemoryModuleTypes.CHEST_HISTORY)
+        
+        // 成功找到并处理目标，标记本轮成功
+        lastRoundSucceeded = true
     }
 
     /**
@@ -1484,6 +1512,7 @@ class SmartTransportItemsBetweenContainers(
         mob.brain.eraseMemory(ModMemoryModuleTypes.CHEST_HISTORY)
 
         hasTransportFailed = false
+        lastRoundSucceeded = true  // 重置状态，下次重新开始
     }
 
     override fun stop(level: ServerLevel, mob: PathfinderMob, gameTime: Long) {
