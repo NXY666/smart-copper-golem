@@ -27,6 +27,7 @@ import org.jspecify.annotations.Nullable;
 import org.nxy.clevercoppergolem.ContainerHelper;
 import org.nxy.clevercoppergolem.ModMemoryModuleTypes;
 import org.nxy.clevercoppergolem.SmartTransportItemsBetweenContainers;
+import org.nxy.clevercoppergolem.SyncMemoryWithNearbyCopperGolems;
 import org.nxy.clevercoppergolem.TransportItemTarget;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
@@ -155,9 +156,11 @@ public abstract class CopperGolemAiMixin {
 						shouldQueueForTarget()
 					)
 				),
-				Pair.of(1, SetEntityLookTargetSometimes.create(EntityType.PLAYER, 6.0F, UniformInt.of(40, 80))),
+				// 添加记忆同步行为 - 优先级1（在物品运输之后）
+				Pair.of(1, new SyncMemoryWithNearbyCopperGolems()),
+				Pair.of(2, SetEntityLookTargetSometimes.create(EntityType.PLAYER, 6.0F, UniformInt.of(40, 80))),
 				Pair.of(
-					2,
+					3,
 					new RunOne<>(
 						ImmutableMap.of(
 							MemoryModuleType.WALK_TARGET, MemoryStatus.VALUE_ABSENT,

@@ -26,13 +26,17 @@ data class CopperGolemDeepMemory(
     // 被拉黑的物品 -> 拉黑结束的游戏时间
     private val blacklistedItems: MutableMap<Item, Long> = mutableMapOf(),
     // 箱子位置 -> 最后访问时间（游戏tick）
-    private val chestLastAccessTime: MutableMap<BlockPos, Long> = mutableMapOf()
+    private val chestLastAccessTime: MutableMap<BlockPos, Long> = mutableMapOf(),
+    // 上次记忆同步的时间（游戏tick）
+    private var lastMemorySyncTime: Long = 0L
 ) {
     companion object {
         // 物品拉黑时长（游戏tick）
         const val BLACKLIST_DURATION_TICKS = 6000L
         // 箱子记忆过期时间（一个游戏日 = 24000 ticks）
         const val CHEST_MEMORY_EXPIRATION_TICKS = 24000L
+        // 记忆同步冷却时间（1分钟 = 1200 ticks）
+        const val MEMORY_SYNC_COOLDOWN_TICKS = 1200L
 
         /**
          * 允许作为"同类物品"的物品标签
@@ -341,5 +345,67 @@ data class CopperGolemDeepMemory(
         }
 
         return expiredChests.size
+    }
+
+    /**
+     * 检查是否可以进行记忆同步（冷却时间已过）
+     * 
+     * @param currentGameTime 当前游戏时间（tick）
+     * @return 是否可以同步
+     */
+    fun canSyncMemory(currentGameTime: Long): Boolean {
+        return currentGameTime - lastMemorySyncTime >= MEMORY_SYNC_COOLDOWN_TICKS
+    }
+
+    /**
+     * 从另一个铜傀儡的记忆中合并新的记忆
+     * 
+     * 合并规则：
+     * 1. 对于本地没有的箱子记忆，直接添加
+     * 2. 对于本地已有的箱子记忆，如果对方的时间戳更新，则更新
+     * 
+     * @param otherMemory 另一个铜傀儡的记忆
+     * @param currentGameTime 当前游戏时间（tick）
+     * @return 是否有任何记忆被更新
+     */
+    fun mergeMemoryFrom(otherMemory: CopperGolemDeepMemory, currentGameTime: Long): Boolean {
+        var hasUpdate = false
+
+        // 合并箱子的最后访问时间和相关的物品/tag映射
+        for ((chestPos, otherAccessTime) in otherMemory.chestLastAccessTime) {
+            val myAccessTime = chestLastAccessTime[chestPos]
+            
+            // 如果我没有这个箱子的记忆，或者对方的时间戳更新
+            if (myAccessTime == null || otherAccessTime > myAccessTime) {
+                // 先清除这个箱子的旧记忆（如果有）
+                clearChest(chestPos)
+                
+                // 更新箱子的访问时间
+                chestLastAccessTime[chestPos] = otherAccessTime
+                
+                // 复制物品映射
+                otherMemory.itemChestMap.forEach { item, chest ->
+                    if (chest == chestPos) {
+                        itemChestMap.put(item, chestPos)
+                    }
+                }
+                
+                // 复制tag映射
+                otherMemory.tagChestMap.forEach { tag, chest ->
+                    if (chest == chestPos) {
+                        tagChestMap.put(tag, chestPos)
+                    }
+                }
+                
+                hasUpdate = true
+            }
+        }
+
+        // 更新同步时间
+        if (hasUpdate) {
+            lastMemorySyncTime = currentGameTime
+        }
+
+        return hasUpdate
     }
 }
