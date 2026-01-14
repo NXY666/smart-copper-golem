@@ -1,4 +1,4 @@
-package org.nxy.clevercoppergolem.utils
+package org.nxy.clevercoppergolem.util
 
 import net.minecraft.world.entity.PathfinderMob
 import net.minecraft.world.phys.Vec3

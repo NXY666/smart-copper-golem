@@ -8,9 +8,9 @@ import net.minecraft.world.level.block.ChestBlock
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.level.pathfinder.Path
-import org.nxy.clevercoppergolem.utils.MobPathSearcher
-import org.nxy.clevercoppergolem.utils.OfflineSegmentPathfinder
-import org.nxy.clevercoppergolem.utils.logger
+import org.nxy.clevercoppergolem.util.MobPathSearcher
+import org.nxy.clevercoppergolem.util.OfflineSegmentPathfinder
+import org.nxy.clevercoppergolem.util.logger
 
 enum class TransportItemState {
     TRAVELLING,

@@ -29,11 +29,11 @@ import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import org.apache.commons.lang3.function.TriConsumer
 import org.nxy.clevercoppergolem.CopperGolemDeepMemory.Companion.ALLOWED_ITEM_CATEGORY_TAGS
-import org.nxy.clevercoppergolem.utils.BlockVisibilityChecker
-import org.nxy.clevercoppergolem.utils.MobPathSearcher.HORIZONTAL_INTERACTION_RANGE
-import org.nxy.clevercoppergolem.utils.MobPathSearcher.VERTICAL_INTERACTION_RANGE
-import org.nxy.clevercoppergolem.utils.MobUtil
-import org.nxy.clevercoppergolem.utils.logger
+import org.nxy.clevercoppergolem.util.BlockVisibilityChecker
+import org.nxy.clevercoppergolem.util.MobPathSearcher.HORIZONTAL_INTERACTION_RANGE
+import org.nxy.clevercoppergolem.util.MobPathSearcher.VERTICAL_INTERACTION_RANGE
+import org.nxy.clevercoppergolem.util.MobUtil
+import org.nxy.clevercoppergolem.util.logger
 import java.util.*
 import java.util.function.BiConsumer
 import java.util.function.Consumer
@@ -1495,7 +1495,7 @@ class SmartTransportItemsBetweenContainers(
         mob.brain.eraseMemory(MemoryModuleType.VISITED_BLOCK_POSITIONS)
         mob.brain.eraseMemory(MemoryModuleType.UNREACHABLE_TRANSPORT_BLOCK_POSITIONS)
         mob.brain.eraseMemory(ModMemoryModuleTypes.CHEST_HISTORY)
-        
+
         // 成功找到并处理目标，标记本轮成功
         lastRoundSucceeded = true
     }

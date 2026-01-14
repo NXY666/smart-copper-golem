@@ -1,4 +1,4 @@
-package org.nxy.clevercoppergolem.utils
+package org.nxy.clevercoppergolem.util
 
 import com.google.common.collect.ImmutableSet
 import net.minecraft.core.BlockPos

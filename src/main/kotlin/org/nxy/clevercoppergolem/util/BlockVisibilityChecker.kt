@@ -1,4 +1,4 @@
-package org.nxy.clevercoppergolem.utils
+package org.nxy.clevercoppergolem.util
 
 import net.minecraft.core.BlockPos
 import net.minecraft.server.level.ServerLevel

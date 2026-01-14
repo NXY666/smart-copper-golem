@@ -1,4 +1,4 @@
-package org.nxy.clevercoppergolem.utils
+package org.nxy.clevercoppergolem.util
 
 import it.unimi.dsi.fastutil.longs.LongArrayList
 import net.minecraft.core.BlockPos

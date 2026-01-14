@@ -15,7 +15,7 @@ package org.nxy.clevercoppergolem.util
 class BiMultiMap<K, V> {
     // key -> values 映射（一个 key 可能对应多个 value）
     private val keyToValues: MutableMap<K, MutableSet<V>> = mutableMapOf()
-    
+
     // value -> keys 映射（一个 value 可能对应多个 key）
     private val valueToKeys: MutableMap<V, MutableSet<K>> = mutableMapOf()
 
@@ -92,20 +92,20 @@ class BiMultiMap<K, V> {
      */
     fun remove(key: K, value: V): Boolean {
         val removed = keyToValues[key]?.remove(value) ?: false
-        
+
         if (removed) {
             // 如果 key 不再有任何 value，移除这个 key
             if (keyToValues[key]?.isEmpty() == true) {
                 keyToValues.remove(key)
             }
-            
+
             // 同时移除反向映射
             valueToKeys[value]?.remove(key)
             if (valueToKeys[value]?.isEmpty() == true) {
                 valueToKeys.remove(value)
             }
         }
-        
+
         return removed
     }
 
@@ -117,7 +117,7 @@ class BiMultiMap<K, V> {
      */
     fun removeByKey(key: K): Set<V> {
         val values = keyToValues.remove(key) ?: return emptySet()
-        
+
         // 同时移除所有反向映射
         for (value in values) {
             valueToKeys[value]?.remove(key)
@@ -125,7 +125,7 @@ class BiMultiMap<K, V> {
                 valueToKeys.remove(value)
             }
         }
-        
+
         return values.toSet()
     }
 
@@ -137,7 +137,7 @@ class BiMultiMap<K, V> {
      */
     fun removeByValue(value: V): Set<K> {
         val keys = valueToKeys.remove(value) ?: return emptySet()
-        
+
         // 同时移除所有正向映射
         for (key in keys) {
             keyToValues[key]?.remove(value)
@@ -145,7 +145,7 @@ class BiMultiMap<K, V> {
                 keyToValues.remove(key)
             }
         }
-        
+
         return keys.toSet()
     }
 

@@ -33,8 +33,10 @@ data class CopperGolemDeepMemory(
     companion object {
         // 物品拉黑时长（游戏tick）
         const val BLACKLIST_DURATION_TICKS = 6000L
+
         // 箱子记忆过期时间（一个游戏日 = 24000 ticks）
         const val CHEST_MEMORY_EXPIRATION_TICKS = 24000L
+
         // 记忆同步冷却时间（1分钟 = 1200 ticks）
         const val MEMORY_SYNC_COOLDOWN_TICKS = 1200L
 
@@ -164,7 +166,12 @@ data class CopperGolemDeepMemory(
      * @param matchMode 物品匹配模式（用于决定是否记录tag）
      * @param currentGameTime 当前游戏时间（tick）
      */
-    fun updateChest(chestPos: BlockPos, container: Container, matchMode: SmartTransportItemsBetweenContainers.Companion.ItemMatchMode, currentGameTime: Long) {
+    fun updateChest(
+        chestPos: BlockPos,
+        container: Container,
+        matchMode: SmartTransportItemsBetweenContainers.Companion.ItemMatchMode,
+        currentGameTime: Long
+    ) {
         val items = mutableSetOf<Item>()
         val itemsWithSpace = mutableSetOf<Item>()
 
@@ -262,11 +269,11 @@ data class CopperGolemDeepMemory(
         matchMode: SmartTransportItemsBetweenContainers.Companion.ItemMatchMode
     ): BlockPos? {
         val candidateChests = mutableSetOf<BlockPos>()
-        
+
         // 先尝试精确匹配，获取所有可能的箱子
         val exactMatches = itemChestMap.getValuesByKey(item)
-        candidateChests.addAll(exactMatches.filter { 
-            isChestInRange(it, currentPos, horizontalRange, verticalRange) 
+        candidateChests.addAll(exactMatches.filter {
+            isChestInRange(it, currentPos, horizontalRange, verticalRange)
         })
 
         // 如果是CATEGORY模式，也尝试tag匹配
@@ -274,8 +281,8 @@ data class CopperGolemDeepMemory(
             for (tag in ALLOWED_ITEM_CATEGORY_TAGS) {
                 if (BuiltInRegistries.ITEM.wrapAsHolder(item).`is`(tag)) {
                     val tagMatches = tagChestMap.getValuesByKey(tag)
-                    candidateChests.addAll(tagMatches.filter { 
-                        isChestInRange(it, currentPos, horizontalRange, verticalRange) 
+                    candidateChests.addAll(tagMatches.filter {
+                        isChestInRange(it, currentPos, horizontalRange, verticalRange)
                     })
                 }
             }
@@ -374,29 +381,29 @@ data class CopperGolemDeepMemory(
         // 合并箱子的最后访问时间和相关的物品/tag映射
         for ((chestPos, otherAccessTime) in otherMemory.chestLastAccessTime) {
             val myAccessTime = chestLastAccessTime[chestPos]
-            
+
             // 如果我没有这个箱子的记忆，或者对方的时间戳更新
             if (myAccessTime == null || otherAccessTime > myAccessTime) {
                 // 先清除这个箱子的旧记忆（如果有）
                 clearChest(chestPos)
-                
+
                 // 更新箱子的访问时间
                 chestLastAccessTime[chestPos] = otherAccessTime
-                
+
                 // 复制物品映射
                 otherMemory.itemChestMap.forEach { item, chest ->
                     if (chest == chestPos) {
                         itemChestMap.put(item, chestPos)
                     }
                 }
-                
+
                 // 复制tag映射
                 otherMemory.tagChestMap.forEach { tag, chest ->
                     if (chest == chestPos) {
                         tagChestMap.put(tag, chestPos)
                     }
                 }
-                
+
                 hasUpdate = true
             }
         }
