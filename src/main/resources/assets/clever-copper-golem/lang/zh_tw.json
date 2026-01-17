@@ -1,0 +1,67 @@
+{
+	"screen.clever_copper_golem.config.title": "Clever Copper Golem 設定",
+
+	"config.section.transport.title": "運輸設定",
+	"config.section.transport.desc": "物品運輸為銅傀儡的基本能力。\n\n✔ 銅傀儡會嘗試開啟桶子及潛影盒。\n❌ 移除掃描箱子數量的上限。",
+
+	"config.transport.target_interaction_time.label": "容器互動時間",
+	"config.transport.target_interaction_time.tooltip": "檢查容器所需時間（單位：刻）",
+
+	"config.transport.max_stack_size.label": "最大搬運數量",
+	"config.transport.max_stack_size.tooltip": "每次可搬運的最大物品數量（單位：個）\n\n※ 不得超過遊戲內物品堆疊上限。",
+
+	"config.transport.match_mode.label": "物品比對模式",
+	"config.transport.match_mode.tooltip": "物品分類時使用的比對規則：\n精確比對：比對物品種類及所有細節（耐久度、附魔、名稱等）。\n項目比對：僅比對物品種類，不考慮其他細節。\n類別比對：比對相似類型物品（如不同顏色的羊毛）。",
+	"config.transport.match_mode.exact": "精確比對（含細節）",
+	"config.transport.match_mode.item_only": "項目比對（僅種類）",
+	"config.transport.match_mode.category": "類別比對（相似類型）",
+	"config.transport.match_mode.unknown": "未定義模式",
+
+	"config.section.pathfinding.title": "尋路設定",
+	"config.section.pathfinding.desc": "尋路為銅傀儡的重要能力。\n\n✔ 重建原版尋路邏輯，大幅提升到達目標的成功率。",
+
+	"config.pathfinding.horizontal_range.label": "水平互動範圍",
+	"config.pathfinding.horizontal_range.tooltip": "可開啟目標容器的水平距離（單位：方塊）\n\n※ 增加範圍將提高尋路計算量。",
+
+	"config.pathfinding.vertical_range.label": "垂直互動範圍",
+	"config.pathfinding.vertical_range.tooltip": "可開啟目標容器的垂直距離（單位：方塊）\n\n※ 增加範圍將提高尋路計算量。",
+
+	"config.section.memory.title": "深度記憶設定",
+	"config.section.memory.desc": "深度記憶讓銅傀儡更有效率地運送物品。\n\n✔ 銅傀儡會優先處理已記錄的物品容器。\n✔ 銅傀儡相遇時會交換記憶資訊。\n✔ 無法放入任何容器的物品會送回銅箱，並暫時忽略。\n✔ 長時間未訪問的容器記憶將逐漸遺忘。",
+
+	"config.memory.blacklist_duration.label": "物品忽略時間",
+	"config.memory.blacklist_duration.tooltip": "無法投遞的物品將送回銅箱並在此期間忽略（單位：刻）",
+
+	"config.memory.chest_expiration.label": "記憶保留時間",
+	"config.memory.chest_expiration.tooltip": "與容器相關的記憶會在此時間後清除（單位：刻）",
+
+	"config.memory.sync_cooldown.label": "記憶同步冷卻時間",
+	"config.memory.sync_cooldown.tooltip": "成功同步後暫停記憶交換的時間（單位：刻）\n\n※ 設定過低可能導致效能下降。",
+
+	"config.memory.sync_distance.label": "記憶同步距離",
+	"config.memory.sync_distance.tooltip": "兩個銅傀儡在此距離內相遇時觸發記憶同步（單位：方塊）",
+
+	"config.error.min_interaction_time": "互動時間至少需 10 刻",
+	"config.error.min_transport_item": "至少需搬運 1 個物品",
+	"config.error.max_transport_item": "最多只能搬運 64 個物品",
+	"config.error.invalid_match_mode": "無效的比對模式",
+	"config.error.min_horizontal_range": "水平互動範圍至少為 1 方塊",
+	"config.error.max_horizontal_range": "水平互動範圍最多為 5 方塊",
+	"config.error.min_vertical_range": "垂直互動範圍至少為 1 方塊",
+	"config.error.max_vertical_range": "垂直互動範圍最多為 10 方塊",
+	"config.error.min_blacklist_duration": "忽略時間至少需 0 刻",
+	"config.error.min_chest_memory": "記憶保留時間至少需 1 刻",
+	"config.error.negative_cooldown": "冷卻時間不得為負值",
+	"config.error.min_sync_distance": "距離至少需 0.5 方塊",
+	"config.error.unresolved": "存在未解決的錯誤",
+
+	"config.button.save_and_exit": "儲存並離開",
+	"config.button.reset": "重置設定",
+
+	"config.dialog.discard.title": "放棄變更",
+	"config.dialog.discard.message": "是否放棄尚未儲存的變更？此操作無法還原。",
+	"config.dialog.save.title": "儲存變更",
+	"config.dialog.save.message": "確定要儲存變更？",
+	"config.dialog.reset.title": "重置設定",
+	"config.dialog.reset.message": "確定要將設定重置為預設值？"
+}

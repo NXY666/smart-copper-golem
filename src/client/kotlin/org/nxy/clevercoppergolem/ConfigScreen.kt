@@ -18,7 +18,7 @@ import org.nxy.clevercoppergolem.config.ConfigManager
 /**
  * Mod 配置界面 - 模仿原版风格
  */
-class ConfigScreen(private val parent: Screen?) : Screen(Component.literal("Clever Copper Golem 配置")) {
+class ConfigScreen(private val parent: Screen?) : Screen(Component.translatable("screen.clever_copper_golem.config.title")) {
     // 原版风格布局
     private val layout = HeaderAndFooterLayout(this)
 
@@ -26,10 +26,10 @@ class ConfigScreen(private val parent: Screen?) : Screen(Component.literal("Clev
     private lateinit var editingConfig: Config
 
     // 验证器映射：widget -> validator lambda 返回错误信息或 null
-    private val validators = mutableMapOf<AbstractWidget, () -> String?>()
+    private val validators = mutableMapOf<AbstractWidget, () -> Component?>()
 
     // 当前验证错误：widget -> 错误信息（null 表示无错误）
-    private val validationErrors = mutableMapOf<AbstractWidget, String?>()
+    private val validationErrors = mutableMapOf<AbstractWidget, Component?>()
 
     // 组件引用
     private lateinit var list: ConfigList
@@ -67,12 +67,8 @@ class ConfigScreen(private val parent: Screen?) : Screen(Component.literal("Clev
 
         // --- 运输配置 ---
         list.addHeader(
-            Component.literal("运输"),
-            Component.literal(
-                "运输物品是铜傀儡的基本技能。\n\n" +
-                        "✔ 铜傀儡将会尝试打开木桶和潜影盒。\n" +
-                        "❌ 箱子遍历数量上限已被移除。"
-            )
+            Component.translatable("config.section.transport.title"),
+            Component.translatable("config.section.transport.desc")
         )
 
         targetInteractionTimeEditBox = IntEditBox(editingConfig.transport.targetInteractionTime) {
@@ -81,36 +77,40 @@ class ConfigScreen(private val parent: Screen?) : Screen(Component.literal("Clev
         // 验证：最小值为10（与 ConfigManager.validate 保持一致）
         setValidator(targetInteractionTimeEditBox) {
             val v = editingConfig.transport.targetInteractionTime
-            if (v < 10) return@setValidator ("至少互动 10 刻")
+            if (v < 10) return@setValidator Component.translatable("config.error.min_interaction_time")
             null
         }
-        list.addOption("容器交互时间", "查看箱子时所消耗的时间\n单位：刻", targetInteractionTimeEditBox)
+        list.addOption(
+            Component.translatable("config.transport.target_interaction_time.label"),
+            Component.translatable("config.transport.target_interaction_time.tooltip"),
+            targetInteractionTimeEditBox
+        )
 
         transportedItemMaxStackSizeSlider = IntSlider(1, 64, editingConfig.transport.transportedItemMaxStackSize) {
             editingConfig.transport.transportedItemMaxStackSize = it
         }
         setValidator(transportedItemMaxStackSizeSlider) {
             val v = editingConfig.transport.transportedItemMaxStackSize
-            if (v <= 0) return@setValidator ("至少搬运 1 个物品")
-            if (v > 64) return@setValidator ("最多搬运 64 个物品")
+            if (v <= 0) return@setValidator Component.translatable("config.error.min_transport_item")
+            if (v > 64) return@setValidator Component.translatable("config.error.max_transport_item")
             null
         }
         list.addOption(
-            "最大拾取物品数量",
-            "单次运输物品的最大数量\n单位：个\n\n💬 这个选项无法突破游戏内物品的堆叠限制。",
+            Component.translatable("config.transport.max_stack_size.label"),
+            Component.translatable("config.transport.max_stack_size.tooltip"),
             transportedItemMaxStackSizeSlider
         )
 
         val itemMatchOption = CycleOption(
             initial = editingConfig.transport.itemMatchMode,
             values = listOf("EXACT", "ITEM_ONLY", "CATEGORY"),
-            label = Component.literal("物品匹配模式"),
+            label = Component.translatable("config.transport.match_mode.label"),
             displayMapper = { v ->
                 when (v) {
-                    "EXACT" -> Component.literal("完全匹配（匹配物品与组件）")
-                    "ITEM_ONLY" -> Component.literal("物品匹配（仅匹配物品）")
-                    "CATEGORY" -> Component.literal("类别匹配（匹配相似的物品）")
-                    else -> Component.literal("未知模式")
+                    "EXACT" -> Component.translatable("config.transport.match_mode.exact")
+                    "ITEM_ONLY" -> Component.translatable("config.transport.match_mode.item_only")
+                    "CATEGORY" -> Component.translatable("config.transport.match_mode.category")
+                    else -> Component.translatable("config.transport.match_mode.unknown")
                 }
             },
             onChange = { value -> editingConfig.transport.itemMatchMode = value }
@@ -119,25 +119,19 @@ class ConfigScreen(private val parent: Screen?) : Screen(Component.literal("Clev
         setValidator(itemMatchModeCycleButton) {
             val v = editingConfig.transport.itemMatchMode
             val valid = setOf("EXACT", "ITEM_ONLY", "CATEGORY")
-            if (v !in valid) return@setValidator ("无效的匹配模式")
+            if (v !in valid) return@setValidator Component.translatable("config.error.invalid_match_mode")
             null
         }
         list.addOption(
-            "物品匹配模式",
-            "分拣物品时的匹配规则\n\n" +
-                    "完全匹配：匹配物品类型和组件（耐久、附魔、命名等）。\n" +
-                    "物品匹配：仅匹配物品类型，忽略组件差异。\n" +
-                    "类别匹配：匹配相似的物品（如不同颜色的羊毛、不同材质的木板等）。",
+            Component.translatable("config.transport.match_mode.label"),
+            Component.translatable("config.transport.match_mode.tooltip"),
             itemMatchModeCycleButton
         )
 
         // --- 寻路 ---
         list.addHeader(
-            Component.literal("寻路"),
-            Component.literal(
-                "寻路是铜傀儡的基本技能。\n\n" +
-                        "✔ 重构原版寻路逻辑，大幅提升到达目标的成功率。"
-            )
+            Component.translatable("config.section.pathfinding.title"),
+            Component.translatable("config.section.pathfinding.desc")
         )
 
         horizontalInteractionRangeSlider =
@@ -146,15 +140,13 @@ class ConfigScreen(private val parent: Screen?) : Screen(Component.literal("Clev
             }
         setValidator(horizontalInteractionRangeSlider) {
             val v = editingConfig.pathfinding.horizontalInteractionRange
-            if (v < 1) return@setValidator ("至少在距离 1 格内交互")
-            if (v > 5) return@setValidator ("最多在距离 5 格内交互")
+            if (v < 1) return@setValidator Component.translatable("config.error.min_horizontal_range")
+            if (v > 5) return@setValidator Component.translatable("config.error.max_horizontal_range")
             null
         }
         list.addOption(
-            "水平交互距离",
-            "可以打开目标容器的水平距离\n" +
-                    "单位：格\n\n" +
-                    "💬 提升交互距离会使寻路计算量成倍增加！",
+            Component.translatable("config.pathfinding.horizontal_range.label"),
+            Component.translatable("config.pathfinding.horizontal_range.tooltip"),
             horizontalInteractionRangeSlider
         )
 
@@ -164,28 +156,20 @@ class ConfigScreen(private val parent: Screen?) : Screen(Component.literal("Clev
             }
         setValidator(verticalInteractionRangeSlider) {
             val v = editingConfig.pathfinding.verticalInteractionRange
-            if (v < 1) return@setValidator ("至少在距离 1 格内交互")
-            if (v > 10) return@setValidator ("最多在距离 10 格内交互")
+            if (v < 1) return@setValidator Component.translatable("config.error.min_vertical_range")
+            if (v > 10) return@setValidator Component.translatable("config.error.max_vertical_range")
             null
         }
         list.addOption(
-            "垂直交互距离",
-            "可以打开目标容器的垂直距离\n" +
-                    "单位：格\n\n" +
-                    "💬 提升交互距离会使寻路计算量成倍增加！",
+            Component.translatable("config.pathfinding.vertical_range.label"),
+            Component.translatable("config.pathfinding.vertical_range.tooltip"),
             verticalInteractionRangeSlider
         )
 
         // --- 记忆配置 ---
         list.addHeader(
-            Component.literal("深度记忆"),
-            Component.literal(
-                "深度记忆可以帮助铜傀儡有目的性地运输物品，大幅提高运输效率。\n\n" +
-                        "✔ 铜傀儡会优先搬运记忆中记录的目标物品。\n" +
-                        "✔ 当两只铜傀儡相遇时，它们会交换最新的记忆信息。\n" +
-                        "✔ 若某一物品无法被放入任何箱子，它会被送回铜箱子并暂时拉黑。\n" +
-                        "✔ 铜傀儡会逐渐忘记长期未访问的箱子。"
-            )
+            Component.translatable("config.section.memory.title"),
+            Component.translatable("config.section.memory.desc")
         )
 
         memoryBlacklistDurationTicksEditBox = LongEditBox(editingConfig.memory.blacklistDurationTicks) {
@@ -193,12 +177,12 @@ class ConfigScreen(private val parent: Screen?) : Screen(Component.literal("Clev
         }
         setValidator(memoryBlacklistDurationTicksEditBox) {
             val v = editingConfig.memory.blacklistDurationTicks
-            if (v < 0) return@setValidator ("至少拉黑 0 刻")
+            if (v < 0) return@setValidator Component.translatable("config.error.min_blacklist_duration")
             null
         }
         list.addOption(
-            "物品忽略时长",
-            "无法送达的物品将被送回铜箱子并忽略一段时间\n单位：刻",
+            Component.translatable("config.memory.blacklist_duration.label"),
+            Component.translatable("config.memory.blacklist_duration.tooltip"),
             memoryBlacklistDurationTicksEditBox
         )
 
@@ -207,22 +191,26 @@ class ConfigScreen(private val parent: Screen?) : Screen(Component.literal("Clev
         }
         setValidator(memoryChestExpirationTicksEditBox) {
             val v = editingConfig.memory.chestExpirationTicks
-            if (v <= 0) return@setValidator ("至少保留 1 刻的记忆")
+            if (v <= 0) return@setValidator Component.translatable("config.error.min_chest_memory")
             null
         }
-        list.addOption("记忆留存时长", "箱子的相关记忆将在一段时间后被清除\n单位：刻", memoryChestExpirationTicksEditBox)
+        list.addOption(
+            Component.translatable("config.memory.chest_expiration.label"),
+            Component.translatable("config.memory.chest_expiration.tooltip"),
+            memoryChestExpirationTicksEditBox
+        )
 
         memorySyncCooldownTicksEditBox = LongEditBox(editingConfig.memory.syncCooldownTicks) {
             editingConfig.memory.syncCooldownTicks = it
         }
         setValidator(memorySyncCooldownTicksEditBox) {
             val v = editingConfig.memory.syncCooldownTicks
-            if (v < 0) return@setValidator ("冷却时间不能为负数")
+            if (v < 0) return@setValidator Component.translatable("config.error.negative_cooldown")
             null
         }
         list.addOption(
-            "记忆交换冷却时长",
-            "记忆交换成功后将暂停交换一段时间\n单位：刻\n\n💬 降低冷却时间可能因频繁交换导致性能问题。",
+            Component.translatable("config.memory.sync_cooldown.label"),
+            Component.translatable("config.memory.sync_cooldown.tooltip"),
             memorySyncCooldownTicksEditBox
         )
 
@@ -231,24 +219,24 @@ class ConfigScreen(private val parent: Screen?) : Screen(Component.literal("Clev
         }
         setValidator(memorySyncDetectionRangeEditBox) {
             val v = editingConfig.memory.syncDetectionRange
-            if (v < 0.5) return@setValidator ("距离至少为 0.5 格")
+            if (v < 0.5) return@setValidator Component.translatable("config.error.min_sync_distance")
             null
         }
         list.addOption(
-            "记忆交换触发距离",
-            "两只铜傀儡相遇触发记忆交换的距离\n单位：格",
+            Component.translatable("config.memory.sync_distance.label"),
+            Component.translatable("config.memory.sync_distance.tooltip"),
             memorySyncDetectionRangeEditBox
         )
 
         // 底部按钮 - 使用原版风格横向布局
         val footerLayout = LinearLayout.horizontal().spacing(8)
         // 构造可控的保存按钮，便于根据验证状态启用/禁用
-        saveButton = Button.builder(Component.literal("保存并退出")) { confirmSave() }
+        saveButton = Button.builder(Component.translatable("config.button.save_and_exit")) { confirmSave() }
             .width(100)
             .build()
         footerLayout.addChild(saveButton)
         footerLayout.addChild(
-            Button.builder(Component.literal("重置")) { confirmReset() }
+            Button.builder(Component.translatable("config.button.reset")) { confirmReset() }
                 .width(100)
                 .build()
         )
@@ -342,7 +330,7 @@ class ConfigScreen(private val parent: Screen?) : Screen(Component.literal("Clev
     }
 
     /** 注册验证器并立即执行一次初始验证 */
-    private fun setValidator(widget: AbstractWidget, validator: () -> String?) {
+    private fun setValidator(widget: AbstractWidget, validator: () -> Component?) {
         validators[widget] = validator
         validationErrors[widget] = validator()
         // 更新保存按钮状态（若已初始化）
@@ -366,7 +354,7 @@ class ConfigScreen(private val parent: Screen?) : Screen(Component.literal("Clev
         if (!::saveButton.isInitialized) return
         if (hasValidationErrors()) {
             saveButton.active = false
-            saveButton.setTooltip(Tooltip.create(Component.literal("有未解决的错误")))
+            saveButton.setTooltip(Tooltip.create(Component.translatable("config.error.unresolved")))
         } else {
             saveButton.active = true
             saveButton.setTooltip(null)
@@ -427,8 +415,8 @@ class ConfigScreen(private val parent: Screen?) : Screen(Component.literal("Clev
                         minecraft?.setScreen(this)
                     }
                 },
-                Component.literal("放弃更改"),
-                Component.literal("是否丢弃未保存的更改？该操作不可恢复。")
+                Component.translatable("config.dialog.discard.title"),
+                Component.translatable("config.dialog.discard.message")
             )
         )
     }
@@ -460,8 +448,8 @@ class ConfigScreen(private val parent: Screen?) : Screen(Component.literal("Clev
                         minecraft?.setScreen(this)
                     }
                 },
-                Component.literal("保存"),
-                Component.literal("是否保存更改？")
+                Component.translatable("config.dialog.save.title"),
+                Component.translatable("config.dialog.save.message")
             )
         )
     }
@@ -480,8 +468,8 @@ class ConfigScreen(private val parent: Screen?) : Screen(Component.literal("Clev
                         minecraft?.setScreen(this)
                     }
                 },
-                Component.literal("重置"),
-                Component.literal("是否将配置重置为默认值？")
+                Component.translatable("config.dialog.reset.title"),
+                Component.translatable("config.dialog.reset.message")
             )
         )
     }
@@ -553,30 +541,26 @@ class ConfigScreen(private val parent: Screen?) : Screen(Component.literal("Clev
         }
 
         // 添加小选项（两列布局）
-        fun addOption(label: String?, tooltip: String?, widget: AbstractWidget, forceLineBreak: Boolean = false) {
-            val labelComponent = label?.let { Component.literal(it) }
-            val tooltipComponent = tooltip?.let { Component.literal(it) }
+        fun addOption(label: Component?, tooltip: Component?, widget: AbstractWidget, forceLineBreak: Boolean = false) {
 
             // 检查是否有待配对的单个widget
             val lastEntry = if (children().isNotEmpty()) children().last() else null
             if (!forceLineBreak && lastEntry is OptionEntry && lastEntry.canAddSecondWidget()) {
-                lastEntry.addWidget(labelComponent, tooltipComponent, widget)
+                lastEntry.addWidget(label, tooltip, widget)
             } else {
                 val entry = OptionEntry()
-                entry.addWidget(labelComponent, tooltipComponent, widget)
+                entry.addWidget(label, tooltip, widget)
                 addEntry(entry)
             }
         }
 
         // 添加大选项（单列布局）
-        fun addBigOption(widget: AbstractWidget, label: String? = null, tooltip: String? = null) {
-            val labelComponent = if (label != null) Component.literal(label) else null
-            val tooltipComponent = if (tooltip != null) Component.literal(tooltip) else null
+        fun addBigOption(widget: AbstractWidget, label: Component? = null, tooltip: Component? = null) {
             val lastEntry = if (children().isNotEmpty()) children().last() else null
             if (lastEntry is OptionEntry && lastEntry.canAddSecondWidget()) {
                 addEntry(SpacerEntry(), 1)
             }
-            addEntry(BigOptionEntry(widget, labelComponent, tooltipComponent))
+            addEntry(BigOptionEntry(widget, label, tooltip))
         }
 
         // 基础条目类
@@ -677,7 +661,7 @@ class ConfigScreen(private val parent: Screen?) : Screen(Component.literal("Clev
                         graphics.fill(right - 1, top, right, bottom, red)
 
                         if (mouseX in left..right && mouseY >= top && mouseY <= bottom) {
-                            graphics.setTooltipForNextFrame(font.split(Component.literal(err), 200), mouseX, mouseY)
+                            graphics.setTooltipForNextFrame(font.split(err, 200), mouseX, mouseY)
                         }
                         // 优先展示验证错误 tooltip，跳过原有 tooltip 逻辑
                         continue
@@ -755,7 +739,7 @@ class ConfigScreen(private val parent: Screen?) : Screen(Component.literal("Clev
                     graphics.fill(right - 1, top, right, bottom, red)
 
                     if (mouseX in left..right && mouseY >= top && mouseY <= bottom) {
-                        graphics.setTooltipForNextFrame(font.split(Component.literal(werr), 200), mouseX, mouseY)
+                        graphics.setTooltipForNextFrame(font.split(werr, 200), mouseX, mouseY)
                     }
                     return
                 }
