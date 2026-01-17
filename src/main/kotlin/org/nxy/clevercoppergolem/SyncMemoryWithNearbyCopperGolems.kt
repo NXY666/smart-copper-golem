@@ -6,6 +6,7 @@ import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.entity.ai.behavior.Behavior
 import net.minecraft.world.entity.ai.memory.MemoryStatus
 import net.minecraft.world.entity.animal.golem.CopperGolem
+import org.nxy.clevercoppergolem.config.ConfigAccessor
 import org.nxy.clevercoppergolem.memory.ModMemoryModuleTypes
 
 /**
@@ -21,14 +22,12 @@ class SyncMemoryWithNearbyCopperGolems : Behavior<CopperGolem>(
     ImmutableMap.of(
         ModMemoryModuleTypes.COPPER_GOLEM_DEEP_MEMORY, MemoryStatus.VALUE_PRESENT
     ),
-    MAX_DURATION
+    SYNC_MAX_DURATION
 ) {
     companion object {
-        // 最大持续时间（tick）- 每20tick检查一次
-        private const val MAX_DURATION = 20
-
-        // 检测范围（1格）
-        private const val DETECTION_RANGE = 1.5
+        private const val SYNC_MAX_DURATION = 20
+        // 使用配置中的值
+        private val DETECTION_RANGE: Double get() = ConfigAccessor.memorySyncDetectionRange
     }
 
     override fun checkExtraStartConditions(level: ServerLevel, entity: CopperGolem): Boolean {

@@ -24,7 +24,11 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jspecify.annotations.Nullable;
-import org.nxy.clevercoppergolem.*;
+import org.nxy.clevercoppergolem.ContainerHelper;
+import org.nxy.clevercoppergolem.SmartTransportItemsBetweenContainers;
+import org.nxy.clevercoppergolem.SyncMemoryWithNearbyCopperGolems;
+import org.nxy.clevercoppergolem.TransportItemTarget;
+import org.nxy.clevercoppergolem.config.ConfigManager;
 import org.nxy.clevercoppergolem.memory.ModMemoryModuleTypes;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
@@ -157,8 +161,7 @@ public abstract class CopperGolemAiMixin {
 				Pair.of(1, new SyncMemoryWithNearbyCopperGolems()),
 				Pair.of(2, SetEntityLookTargetSometimes.create(EntityType.PLAYER, 6.0F, UniformInt.of(40, 80))),
 				Pair.of(
-					3,
-					new RunOne<>(
+					3, new RunOne<>(
 						ImmutableMap.of(
 							MemoryModuleType.WALK_TARGET, MemoryStatus.VALUE_ABSENT,
 							MemoryModuleType.TRANSPORT_ITEMS_COOLDOWN_TICKS, MemoryStatus.VALUE_PRESENT
@@ -195,24 +198,21 @@ public abstract class CopperGolemAiMixin {
 		return (mob, transportItemTarget, ticksSinceReachingTarget) -> {
 			if (mob instanceof CopperGolem copperGolem) {
 				Container container = transportItemTarget.getContainer();
-				switch (ticksSinceReachingTarget) {
+
+				if (ticksSinceReachingTarget == TICK_TO_START_ON_REACHED_INTERACTION) {
 					// 1 tick: 打开容器
-					case TICK_TO_START_ON_REACHED_INTERACTION -> {
-						ContainerHelper.startOpen(container, copperGolem);
-						copperGolem.setOpenedChestPos(transportItemTarget.getPos());
-						copperGolem.setState(copperGolemState);
-					}
+					ContainerHelper.startOpen(container, copperGolem);
+					copperGolem.setOpenedChestPos(transportItemTarget.getPos());
+					copperGolem.setState(copperGolemState);
+				} else if (ticksSinceReachingTarget == TICK_TO_PLAY_ON_REACHED_SOUND) {
 					// 9 ticks: 播放声音
-					case TICK_TO_PLAY_ON_REACHED_SOUND -> {
-						if (soundEvent != null) {
-							copperGolem.playSound(soundEvent);
-						}
+					if (soundEvent != null) {
+						copperGolem.playSound(soundEvent);
 					}
-					// 60 ticks: 关闭容器
-					case SmartTransportItemsBetweenContainers.TARGET_INTERACTION_TIME -> {
-						ContainerHelper.stopOpen(container, copperGolem);
-						copperGolem.clearOpenedChestPos();
-					}
+				} else if (ticksSinceReachingTarget == ConfigManager.getConfig().getTransport().getTargetInteractionTime()) {
+					// x ticks: 关闭容器
+					ContainerHelper.stopOpen(container, copperGolem);
+					copperGolem.clearOpenedChestPos();
 				}
 			}
 		};

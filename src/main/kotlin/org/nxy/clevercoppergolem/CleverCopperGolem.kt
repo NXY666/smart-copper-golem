@@ -10,6 +10,7 @@ import net.minecraft.world.entity.Mob
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
+import org.nxy.clevercoppergolem.config.ConfigManager
 import org.nxy.clevercoppergolem.memory.ModMemoryModuleTypes
 import org.nxy.clevercoppergolem.util.BlockVisibilityChecker
 import org.nxy.clevercoppergolem.util.logger
@@ -20,8 +21,6 @@ class CleverCopperGolem : ModInitializer {
     companion object {
         const val MOD_ID = "clever-copper-golem"
 
-        const val SCAN_RADIUS: Int = 10
-        const val TICK_INTERVAL: Int = 10
         private const val HIT_PARTICLE_CORNER_COLOR: Int = 0xFF0000
         private const val HIT_PARTICLE_FACE_COLOR: Int = 0x33FF33
         val HIT_PARTICLE_CORNER: ParticleOptions = DustParticleOptions(HIT_PARTICLE_CORNER_COLOR, 0.8f)
@@ -30,6 +29,10 @@ class CleverCopperGolem : ModInitializer {
 
     override fun onInitialize() {
         logger.debug("[onInitialize] 初始化 $MOD_ID ...")
+
+        // 加载配置文件
+        ConfigManager.load()
+        logger.info("[onInitialize] 配置文件加载完成")
 
 //        ServerTickEvents.END_WORLD_TICK.register(ServerTickEvents.EndWorldTick { level: ServerLevel? ->
 //            this.onWorldTick(
@@ -45,7 +48,7 @@ class CleverCopperGolem : ModInitializer {
 
     private fun onWorldTick(level: ServerLevel) {
         val gameTime = level.gameTime
-        if ((gameTime % TICK_INTERVAL) != 0L) return
+        if ((gameTime % 10) != 0L) return
 
         // 改为：遍历在线玩家，并收集每个玩家周围 64×64 区域内的所有 Mob（避免遍历全世界）
         val mobs: MutableList<Mob> = mutableListOf()
@@ -72,7 +75,7 @@ class CleverCopperGolem : ModInitializer {
 
     private fun scanNearbyChestsAndRaycast(level: ServerLevel, mob: Mob) {
         val center = mob.blockPosition()
-        val r = SCAN_RADIUS
+        val r = 10
 
         // 你要求：距离自己 < 5 格的普通箱子方块（Blocks.CHEST）
         // 这里用方块立方体扫描；需要更精确可用距离过滤

@@ -8,6 +8,7 @@ import net.minecraft.tags.TagKey
 import net.minecraft.world.Container
 import net.minecraft.world.item.Item
 import org.nxy.clevercoppergolem.SmartTransportItemsBetweenContainers
+import org.nxy.clevercoppergolem.config.ConfigAccessor
 import org.nxy.clevercoppergolem.util.BiMultiMap
 import kotlin.math.abs
 
@@ -32,14 +33,10 @@ data class CopperGolemDeepMemory(
     private var lastMemorySyncTime: Long = 0L
 ) {
     companion object {
-        // 物品拉黑时长（游戏tick）
-        const val BLACKLIST_DURATION_TICKS = 6000L
-
-        // 箱子记忆过期时间（一个游戏日 = 24000 ticks）
-        const val CHEST_MEMORY_EXPIRATION_TICKS = 24000L
-
-        // 记忆同步冷却时间（1分钟 = 1200 ticks）
-        const val MEMORY_SYNC_COOLDOWN_TICKS = 1200L
+        // 从配置中读取的常量
+        val BLACKLIST_DURATION_TICKS: Long get() = ConfigAccessor.memoryBlacklistDurationTicks
+        val CHEST_MEMORY_EXPIRATION_TICKS: Long get() = ConfigAccessor.memoryChestExpirationTicks
+        val MEMORY_SYNC_COOLDOWN_TICKS: Long get() = ConfigAccessor.memorySyncCooldownTicks
 
         /**
          * 允许作为"同类物品"的物品标签

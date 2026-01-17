@@ -8,13 +8,14 @@ import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.entity.Mob
 import net.minecraft.world.entity.PathfinderMob
 import net.minecraft.world.level.Level
+import org.nxy.clevercoppergolem.config.ConfigAccessor
 import kotlin.math.max
 import kotlin.math.min
 
 
 object MobPathSearcher {
-    const val HORIZONTAL_INTERACTION_RANGE = 1
-    const val VERTICAL_INTERACTION_RANGE = 4
+    val HORIZONTAL_INTERACTION_RANGE: Int get() = ConfigAccessor.horizontalInteractionRange
+    val VERTICAL_INTERACTION_RANGE: Int get() = ConfigAccessor.verticalInteractionRange
 
     fun findInteractablePos(
         targetBlockPos: BlockPos,

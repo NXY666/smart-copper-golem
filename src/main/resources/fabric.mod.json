@@ -2,16 +2,19 @@
 	"schemaVersion": 1,
 	"id": "clever-copper-golem",
 	"version": "${version}",
-	"name": "clever-copper-golem",
+	"name": "Clever Copper Golem",
 	"description": "",
-	"authors": [],
+	"authors": ["NXY"],
 	"contact": {},
 	"license": "AGPL-3.0",
 	"icon": "assets/clever-copper-golem/icon.png",
-	"environment": "server",
+	"environment": "*",
 	"entrypoints": {
 		"main": [
 			"org.nxy.clevercoppergolem.CleverCopperGolem"
+		],
+		"modmenu": [
+			"org.nxy.clevercoppergolem.ModMenuIntegration"
 		]
 	},
 	"mixins": [

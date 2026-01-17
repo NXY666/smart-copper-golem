@@ -3,6 +3,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     kotlin("jvm") version "2.3.0"
+    kotlin("plugin.serialization") version "2.3.0"
     id("fabric-loom") version "1.14.10"
     id("maven-publish")
 }
@@ -29,6 +30,7 @@ loom {
     mods {
         register("clever-copper-golem") {
             sourceSet("main")
+            sourceSet("client")
         }
     }
 }
@@ -45,6 +47,9 @@ repositories {
     // Loom adds the essential maven repositories to download Minecraft and libraries from automatically.
     // See https://docs.gradle.org/current/userguide/declaring_repositories.html
     // for more information about repositories.
+    maven("https://maven.terraformersmc.com/") {
+        name = "Terraformers"
+    }
 }
 
 dependencies {
@@ -55,6 +60,11 @@ dependencies {
     modImplementation("net.fabricmc:fabric-language-kotlin:${project.property("kotlin_loader_version")}")
 
     modImplementation("net.fabricmc.fabric-api:fabric-api:${project.property("fabric_version")}")
+
+    modCompileOnly("com.terraformersmc:modmenu:${project.property("modmenu_version")}")
+    
+    // Kotlinx Serialization
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
 }
 
 tasks.processResources {
