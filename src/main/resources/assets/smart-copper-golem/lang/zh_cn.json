@@ -1,5 +1,8 @@
 {
-  "screen.smart_copper_golem.config.title": "Smart Copper Golem 配置",
+  "modmenu.nameTranslation.smart-copper-golem": "智能铜傀儡",
+  "modmenu.summaryTranslation.smart-copper-golem": "重构原版铜傀儡行为逻辑，并新增深度记忆支持，让它们更聪明、更高效。",
+
+  "screen.smart_copper_golem.config.title": "智能铜傀儡 配置",
 
   "config.section.transport.title": "运输",
   "config.section.transport.desc": "运输物品是铜傀儡的基本技能。\n\n✔ 铜傀儡将会尝试打开木桶和潜影盒。\n❌ 箱子遍历数量上限已被移除。",
