@@ -1,4 +1,4 @@
-package org.nxy.smartcoppergolem
+package org.nxy.smartcoppergolem.memory
 
 import com.google.common.collect.ImmutableMap
 import net.minecraft.core.particles.ParticleTypes
@@ -7,11 +7,10 @@ import net.minecraft.world.entity.ai.behavior.Behavior
 import net.minecraft.world.entity.ai.memory.MemoryStatus
 import net.minecraft.world.entity.animal.golem.CopperGolem
 import org.nxy.smartcoppergolem.config.ConfigAccessor
-import org.nxy.smartcoppergolem.memory.ModMemoryModuleTypes
 
 /**
  * 铜傀儡记忆同步行为
- * 
+ *
  * 功能：
  * - 检测距离1格内的其他铜傀儡
  * - 尝试将对方的新记忆合并到自己的记忆中

@@ -26,7 +26,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import org.jspecify.annotations.Nullable;
 import org.nxy.smartcoppergolem.util.ContainerHelper;
 import org.nxy.smartcoppergolem.SmartTransportItemsBetweenContainers;
-import org.nxy.smartcoppergolem.SyncMemoryWithNearbyCopperGolems;
+import org.nxy.smartcoppergolem.memory.SyncMemoryWithNearbyCopperGolems;
 import org.nxy.smartcoppergolem.TransportItemTarget;
 import org.nxy.smartcoppergolem.config.ConfigManager;
 import org.nxy.smartcoppergolem.memory.ModMemoryModuleTypes;
