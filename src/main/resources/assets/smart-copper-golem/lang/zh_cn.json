@@ -1,0 +1,67 @@
+{
+  "screen.smart_copper_golem.config.title": "Smart Copper Golem 配置",
+
+  "config.section.transport.title": "运输",
+  "config.section.transport.desc": "运输物品是铜傀儡的基本技能。\n\n✔ 铜傀儡将会尝试打开木桶和潜影盒。\n❌ 箱子遍历数量上限已被移除。",
+
+  "config.transport.target_interaction_time.label": "容器交互时间",
+  "config.transport.target_interaction_time.tooltip": "查看箱子时所消耗的时间\n单位：刻",
+
+  "config.transport.max_stack_size.label": "最大拾取物品数量",
+  "config.transport.max_stack_size.tooltip": "单次运输物品的最大数量\n单位：个\n\n💬 这个选项无法突破游戏内物品的堆叠限制。",
+
+  "config.transport.match_mode.label": "物品匹配模式",
+  "config.transport.match_mode.tooltip": "分拣物品时的匹配规则\n\n - 完全匹配：匹配物品类型和组件（耐久、附魔、命名等）。\n - 物品匹配：仅匹配物品类型，忽略组件差异。\n - 类别匹配：匹配相似的物品（如不同颜色的羊毛、不同材质的木板等）。",
+  "config.transport.match_mode.exact": "完全匹配（匹配物品与组件）",
+  "config.transport.match_mode.item_only": "物品匹配（仅匹配物品）",
+  "config.transport.match_mode.category": "类别匹配（匹配相似的物品）",
+  "config.transport.match_mode.unknown": "未知模式",
+
+  "config.section.pathfinding.title": "寻路",
+  "config.section.pathfinding.desc": "寻路是铜傀儡的基本技能。\n\n✔ 重构原版寻路逻辑，大幅提升到达目标的成功率。",
+
+  "config.pathfinding.horizontal_range.label": "水平交互距离",
+  "config.pathfinding.horizontal_range.tooltip": "可以打开目标容器的水平距离\n单位：格\n\n💬 提升交互距离会使寻路计算量成倍增加！",
+
+  "config.pathfinding.vertical_range.label": "垂直交互距离",
+  "config.pathfinding.vertical_range.tooltip": "可以打开目标容器的垂直距离\n单位：格\n\n💬 提升交互距离会使寻路计算量成倍增加！",
+
+  "config.section.memory.title": "深度记忆",
+  "config.section.memory.desc": "深度记忆可以帮助铜傀儡有目的性地运输物品，大幅提高运输效率。\n\n✔ 铜傀儡会优先搬运记忆中记录的目标物品。\n✔ 当两只铜傀儡相遇时，它们会交换最新的记忆信息。\n✔ 若某一物品无法被放入任何箱子，它会被送回铜箱子并暂时拉黑。\n✔ 铜傀儡会逐渐忘记长期未访问的箱子。",
+
+  "config.memory.blacklist_duration.label": "物品忽略时长",
+  "config.memory.blacklist_duration.tooltip": "无法送达的物品将被送回铜箱子并忽略一段时间\n单位：刻",
+
+  "config.memory.chest_expiration.label": "记忆留存时长",
+  "config.memory.chest_expiration.tooltip": "箱子的相关记忆将在一段时间后被清除\n单位：刻",
+
+  "config.memory.sync_cooldown.label": "记忆交换冷却时长",
+  "config.memory.sync_cooldown.tooltip": "记忆交换成功后将暂停交换一段时间\n单位：刻\n\n💬 降低冷却时间可能因频繁交换导致性能问题。",
+
+  "config.memory.sync_distance.label": "记忆交换触发距离",
+  "config.memory.sync_distance.tooltip": "两只铜傀儡相遇触发记忆交换的距离\n单位：格",
+
+  "config.error.min_interaction_time": "至少互动 10 刻",
+  "config.error.min_transport_item": "至少搬运 1 个物品",
+  "config.error.max_transport_item": "最多搬运 64 个物品",
+  "config.error.invalid_match_mode": "无效的匹配模式",
+  "config.error.min_horizontal_range": "至少在距离 1 格内交互",
+  "config.error.max_horizontal_range": "最多在距离 5 格内交互",
+  "config.error.min_vertical_range": "至少在距离 1 格内交互",
+  "config.error.max_vertical_range": "最多在距离 10 格内交互",
+  "config.error.min_blacklist_duration": "至少拉黑 0 刻",
+  "config.error.min_chest_memory": "至少保留 1 刻的记忆",
+  "config.error.negative_cooldown": "冷却时间不能为负数",
+  "config.error.min_sync_distance": "距离至少为 0.5 格",
+  "config.error.unresolved": "有未解决的错误",
+
+  "config.button.save_and_exit": "保存并退出",
+  "config.button.reset": "重置",
+
+  "config.dialog.discard.title": "放弃更改",
+  "config.dialog.discard.message": "是否丢弃未保存的更改？该操作不可恢复。",
+  "config.dialog.save.title": "保存",
+  "config.dialog.save.message": "是否保存更改？",
+  "config.dialog.reset.title": "重置",
+  "config.dialog.reset.message": "是否将配置重置为默认值？"
+}

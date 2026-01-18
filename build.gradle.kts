@@ -28,7 +28,7 @@ loom {
     splitEnvironmentSourceSets()
 
     mods {
-        register("clever-copper-golem") {
+        register("smart-copper-golem") {
             sourceSet("main")
             sourceSet("client")
         }

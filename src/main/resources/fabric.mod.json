@@ -1,24 +1,24 @@
 {
 	"schemaVersion": 1,
-	"id": "clever-copper-golem",
+	"id": "smart-copper-golem",
 	"version": "${version}",
-	"name": "Clever Copper Golem",
+	"name": "Smart Copper Golem",
 	"description": "",
 	"authors": ["NXY"],
 	"contact": {},
 	"license": "AGPL-3.0",
-	"icon": "assets/clever-copper-golem/icon.png",
+	"icon": "assets/smart-copper-golem/icon.png",
 	"environment": "*",
 	"entrypoints": {
 		"main": [
-			"org.nxy.clevercoppergolem.CleverCopperGolem"
+			"org.nxy.smartcoppergolem.SmartCopperGolem"
 		],
 		"modmenu": [
-			"org.nxy.clevercoppergolem.ModMenuIntegration"
+			"org.nxy.smartcoppergolem.ModMenuIntegration"
 		]
 	},
 	"mixins": [
-		"clever-copper-golem.mixins.json"
+		"smart-copper-golem.mixins.json"
 	],
 	"depends": {
 		"fabricloader": ">=0.18.4",
