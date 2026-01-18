@@ -396,23 +396,23 @@ class ConfigScreen(private val parent: Screen?) : Screen(Component.translatable(
      */
     private fun handleDonePressed() {
         if (!::editingConfig.isInitialized) {
-            minecraft?.setScreen(parent)
+            minecraft.setScreen(parent)
             return
         }
 
         if (!hasUnsavedChanges()) {
-            minecraft?.setScreen(parent)
+            minecraft.setScreen(parent)
             return
         }
 
         // 有未保存更改，询问是否放弃
-        minecraft?.setScreen(
+        minecraft.setScreen(
             ConfirmScreen(
                 { confirmed ->
                     if (confirmed) {
-                        minecraft?.setScreen(parent)
+                        minecraft.setScreen(parent)
                     } else {
-                        minecraft?.setScreen(this)
+                        minecraft.setScreen(this)
                     }
                 },
                 Component.translatable("config.dialog.discard.title"),
@@ -435,17 +435,17 @@ class ConfigScreen(private val parent: Screen?) : Screen(Component.translatable(
      */
     private fun confirmSave() {
         if (!hasUnsavedChanges()) {
-            minecraft?.setScreen(parent)
+            minecraft.setScreen(parent)
             return
         }
 
-        minecraft?.setScreen(
+        minecraft.setScreen(
             ConfirmScreen(
                 { confirmed ->
                     if (confirmed) {
                         saveAndClose()
                     } else {
-                        minecraft?.setScreen(this)
+                        minecraft.setScreen(this)
                     }
                 },
                 Component.translatable("config.dialog.save.title"),
@@ -458,14 +458,14 @@ class ConfigScreen(private val parent: Screen?) : Screen(Component.translatable(
      * 显示重置确认对话框
      */
     private fun confirmReset() {
-        minecraft?.setScreen(
+        minecraft.setScreen(
             ConfirmScreen(
                 { confirmed ->
                     if (confirmed) {
                         resetToDefaults()
-                        minecraft?.setScreen(this)
+                        minecraft.setScreen(this)
                     } else {
-                        minecraft?.setScreen(this)
+                        minecraft.setScreen(this)
                     }
                 },
                 Component.translatable("config.dialog.reset.title"),
@@ -480,7 +480,7 @@ class ConfigScreen(private val parent: Screen?) : Screen(Component.translatable(
     private fun saveAndClose() {
         ConfigManager.config = editingConfig.deepCopy()
         ConfigManager.save()
-        minecraft?.setScreen(parent)
+        minecraft.setScreen(parent)
     }
 
     /**

@@ -850,7 +850,7 @@ class SmartTransportItemsBetweenContainers(
 
         // 从后往前检查路径上的每个节点是否可达
         for (i in targetPath.nodeCount - 1 downTo max(targetPath.nextNodeIndex - 1, 0)) {
-            val nodeBlockPos = targetPath.getNodePos(i) ?: continue
+            val nodeBlockPos = targetPath.getNodePos(i)
             val nodeFeetY = WalkNodeEvaluator.getFloorLevel(level, nodeBlockPos)
             val nodeFeetPos = nodeBlockPos.center.horizontal().add(0.0, nodeFeetY, 0.0)
 
