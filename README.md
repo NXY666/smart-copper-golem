@@ -8,6 +8,8 @@ They were designed to only transfer a minimal number of items through simple ite
 
 Smart Copper Golem aims to endow Copper Golems with more intelligent behavior, enabling them to manage items more efficiently.
 
+- This mod is implemented entirely on the server side; the client only provides Mod Menu integration.
+
 ## Core Features
 
 ### 🧠 Deep Memory
@@ -34,6 +36,7 @@ Smart Copper Golem aims to endow Copper Golems with more intelligent behavior, e
 ### 🗺️ Pathfinding & Interaction
 
 ✅ Utilizes a more robust pathfinding solution with higher fault tolerance compared to the vanilla version, capable of handling complex terrain.
+
 ✅ More precise interactivity checks; chests that players can interact with, Copper Golems can also interact with.
 
 ### ⚙️ Configuration
@@ -44,18 +47,18 @@ Some core parameters can be adjusted via the configuration file:
 - Item matching mode.
 - Search range, memory decay time, ignore duration, etc.
 
-## Cost
+## Compatibility Notice
 
-This mod enhances the behavior of Copper Golems, improving their item management efficiency, but it also brings additional performance overhead.
+This mod completely refactors the Copper Golem's behavior, so it may be incompatible with other mods that also modify Copper Golems.
 
-If your server needs to build large-scale redstone machines using Copper Golems, please use this mod with caution.
+If your server relies on Copper Golems for redstone machines, those machines may not work properly.
 
 ## Configuration Method
 
 The configuration file is located at `config/smart-copper-golem.json`.
 
 - **Method 1: Directly edit the JSON file**
-- **Method 2: Visual configuration via ModMenu** (requires installing [ModMenu](https://modrinth.com/mod/modmenu))
+- **Method 2: Visual configuration via [Mod Menu](https://modrinth.com/mod/modmenu)**
 
 ## Open Source License
 
