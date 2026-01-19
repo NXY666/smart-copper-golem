@@ -10,34 +10,27 @@ Smart Copper Golem aims to endow Copper Golems with more intelligent behavior, e
 
 - This mod is implemented entirely on the server side; the client only provides Mod Menu integration.
 
-## Core Features
+## Features
 
 ### 🧠 Deep Memory
 
-✅ When accessing a chest, the Copper Golem remembers the types of items inside that chest.
-
-✅ When picking up items from the copper chest, the Copper Golem prioritizes selecting items that exist in its memory.
-
-✅ Copper Golems exchange memories with each other, making collective learning more efficient.
+- When accessing a chest, the Copper Golem remembers the types of items inside that chest.
+- When picking up items from the copper chest, the Copper Golem prioritizes selecting items that exist in its memory.
+- Copper Golems exchange memories with each other, making collective learning more efficient.
 
 ### 🎯 Target Selection
 
-✅ Copper Golems can now open barrels and shulker boxes.
-
-✅ New item matching mode "Similar Items," allowing Copper Golems to place similar items (such as wool of different colors, anvils with varying levels of damage, etc.) into the same chest.
-
-✅ When the item in hand cannot be placed into any target chest, the Copper Golem will return the item to the copper chest and ignore that item for a period of time.
-
-✅ Copper Golems no longer aimlessly iterate in sequence; they now follow the following priority strategy:
-
-- Prioritize chests within interaction range that can be interacted with (especially effective for compact item storage systems)
-- Prioritize chests in memory associated with that item
+- Copper Golems can now open barrels and shulker boxes.
+- New item matching mode "Similar Items," allowing Copper Golems to place similar items (such as wool of different colors, anvils with varying levels of damage, etc.) into the same chest.
+- When the item in hand cannot be placed into any target chest, the Copper Golem will return the item to the copper chest and ignore that item for a period of time.
+- Copper Golems no longer aimlessly iterate in sequence; they now follow the following priority strategy:
+	- Prioritize chests within interaction range that can be interacted with (especially effective for compact item storage systems)
+	- Prioritize chests in memory associated with that item
 
 ### 🗺️ Pathfinding & Interaction
 
-✅ Utilizes a more robust pathfinding solution with higher fault tolerance compared to the vanilla version, capable of handling complex terrain.
-
-✅ More precise interactivity checks; chests that players can interact with, Copper Golems can also interact with.
+- Utilizes a more robust pathfinding solution with higher fault tolerance compared to the vanilla version, capable of handling complex terrain.
+- More precise interactivity checks; chests that players can interact with, Copper Golems can also interact with.
 
 ### ⚙️ Configuration
 
@@ -47,13 +40,13 @@ Some core parameters can be adjusted via the configuration file:
 - Item matching mode.
 - Search range, memory decay time, ignore duration, etc.
 
-## Compatibility Notice
+## Compatibility
 
 This mod completely refactors the Copper Golem's behavior, so it may be incompatible with other mods that also modify Copper Golems.
 
 If your server relies on Copper Golems for redstone machines, those machines may not work properly.
 
-## Configuration Method
+## Configuration 
 
 The configuration file is located at `config/smart-copper-golem.json`.
 

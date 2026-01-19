@@ -5,7 +5,11 @@
 	"name": "Smart Copper Golem",
 	"description": "",
 	"authors": ["NXY"],
-	"contact": {},
+	"contact": {
+		"homepage": "https://modrinth.com/mod/smart-copper-golem",
+		"sources": "https://github.com/NXY666/smart-copper-golem",
+		"issues": "https://github.com/NXY666/smart-copper-golem/issues"
+	},
 	"license": "AGPL-3.0",
 	"icon": "assets/smart-copper-golem/icon.png",
 	"environment": "*",
