@@ -2,13 +2,13 @@
 
 English | [简体中文](README-zh_CN.md) | [繁體中文](README-zh_TW.md)
 
+	This mod is implemented entirely on the server side, the client only provides Mod Menu integration.
+
 Mojang has been extremely cautious in "benefiting players," with the Copper Golem being a prime example.
 
 They were designed to only transfer a minimal number of items through simple iteration from one chest to another. Once encountering an item that cannot be stored, they would fall into an endless loop.
 
 Smart Copper Golem aims to endow Copper Golems with more intelligent behavior, enabling them to manage items more efficiently.
-
-- This mod is implemented entirely on the server side; the client only provides Mod Menu integration.
 
 ## Features
 
