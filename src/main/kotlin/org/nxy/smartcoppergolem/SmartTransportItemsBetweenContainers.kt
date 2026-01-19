@@ -364,84 +364,11 @@ class SmartTransportItemsBetweenContainers(
     }
 
     private fun getTransportTarget(level: ServerLevel, mob: PathfinderMob): Optional<TransportItemTarget> {
-        // 坐车时完全使用原版逻辑，不使用记忆加速
-        if (mob.isPassenger) {
-            return scanDestinationBlock(level, mob)
-        }
-
-        val handItem = mob.mainHandItem
-        val memory = getOrCreateDeepMemory(mob)
-        val currentGameTime = level.gameTime
-
-        // 如果手上有物品且不是返回源箱子，检查记忆（DestinationBlock逻辑）
-        if (!handItem.isEmpty && !isReturningToSourceBlock(mob)) {
-            val item = handItem.item
-
-            // 检查是否被拉黑
-            if (memory.isItemBlocked(item, currentGameTime)) {
-                // 物品被拉黑，返回铜箱子
-                hasTransportFailed = true
-                return scanSourceBlock(level, mob)
-            }
-
-            // 检查记忆中是否有这个物品对应的箱子（带范围验证）
-            val rememberedChest = memory.getChestPosForItem(
-                item,
-                mob.blockPosition(),
-                getHorizontalSearchDistance(mob),
-                getVerticalSearchDistance(mob),
-                getItemMatchMode()
-            )
-            if (rememberedChest != null) {
-                // 验证这个箱子是否仍然有效
-                val targetOpt = createValidTargetByBlockPos(level, mob, rememberedChest)
-                if (targetOpt.isPresent) {
-                    return targetOpt
-                }
-            }
-        }
-
         return if (isReturningToSourceBlock(mob)) {
             scanSourceBlock(level, mob)
         } else {
             scanDestinationBlock(level, mob)
         }
-    }
-
-    private fun createValidTargetByBlockPos(
-        level: ServerLevel,
-        mob: PathfinderMob,
-        chestPos: BlockPos
-    ): Optional<TransportItemTarget> {
-        val blockEntity = level.getBlockEntity(chestPos)
-        if (blockEntity !is BaseContainerBlockEntity) {
-            return Optional.empty()
-        }
-
-        // 转换成 target，计算 walkPos
-        val target = TransportItemTarget.createTarget(
-            blockEntity, level
-        ) ?: return Optional.empty()
-
-        val visitedPositions = getVisitedPositions(mob)
-        val unreachablePositions = getUnreachablePositions(mob)
-
-        val result = if (isReturningToSourceBlock(mob)) {
-            isSourceBlockValidToPick(
-                level, target,
-                visitedPositions,
-                unreachablePositions
-            )
-        } else {
-            isDestinationBlockValidToPick(
-                level, mob, target,
-                visitedPositions,
-                unreachablePositions
-            )
-        }
-
-        // 验证 target 是否有效
-        return if (result) Optional.of(target) else Optional.empty()
     }
 
     private fun scanSourceBlock(level: ServerLevel, mob: PathfinderMob): Optional<TransportItemTarget> {
@@ -621,6 +548,49 @@ class SmartTransportItemsBetweenContainers(
 
                 // 加入历史集合
                 historyChests.add(chestPos)
+            }
+        }
+
+        // 坐车时完全使用原版逻辑，不使用记忆加速
+        if (!mob.isPassenger) {
+            val handItem = mob.mainHandItem
+            val memory = getOrCreateDeepMemory(mob)
+            val currentGameTime = level.gameTime
+
+            // 如果手上有物品且不是返回源箱子，检查记忆（DestinationBlock逻辑）
+            if (!handItem.isEmpty) {
+                val item = handItem.item
+
+                // 检查是否被拉黑
+                if (memory.isItemBlocked(item, currentGameTime)) {
+                    // 物品被拉黑，返回铜箱子
+                    hasTransportFailed = true
+                    return scanSourceBlock(level, mob)
+                }
+
+                // 检查记忆中是否有这个物品对应的箱子（带范围验证）
+                val rememberedChest = memory.getChestPosForItem(
+                    item,
+                    mob.blockPosition(),
+                    getHorizontalSearchDistance(mob),
+                    getVerticalSearchDistance(mob),
+                    getItemMatchMode()
+                )
+                if (rememberedChest != null) {
+                    // 直接根据位置创建 target，然后单独校验是否为目的箱子可用
+                    val rememberedTarget = TransportItemTarget.createTarget(rememberedChest, level)
+                    if (rememberedTarget != null) {
+                        if (isDestinationBlockValidToPick(
+                                level, mob,
+                                rememberedTarget,
+                                visitedPositions,
+                                unreachablePositions
+                            )
+                        ) {
+                            return Optional.of(rememberedTarget)
+                        }
+                    }
+                }
             }
         }
 
