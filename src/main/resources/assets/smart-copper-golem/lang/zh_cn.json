@@ -7,7 +7,7 @@
   "config.section.transport.title": "运输",
   "config.section.transport.desc": "运输物品是铜傀儡的基本技能。\n\n✔ 铜傀儡将会尝试打开木桶和潜影盒。\n❌ 箱子遍历数量上限已被移除。",
 
-  "config.transport.target_interaction_time.label": "容器交互时间",
+  "config.transport.target_interaction_time.label": "箱子交互时间",
   "config.transport.target_interaction_time.tooltip": "查看箱子时所消耗的时间\n单位：刻",
 
   "config.transport.max_stack_size.label": "最大拾取物品数量",
@@ -24,10 +24,10 @@
   "config.section.pathfinding.desc": "寻路是铜傀儡的基本技能。\n\n✔ 重构原版寻路逻辑，大幅提升到达目标的成功率。",
 
   "config.pathfinding.horizontal_range.label": "水平交互距离",
-  "config.pathfinding.horizontal_range.tooltip": "可以打开目标容器的水平距离\n单位：格\n\n💬 提升交互距离会使寻路计算量成倍增加！",
+  "config.pathfinding.horizontal_range.tooltip": "可以打开目标箱子的水平距离\n单位：格\n\n💬 提升交互距离会使寻路计算量成倍增加！",
 
   "config.pathfinding.vertical_range.label": "垂直交互距离",
-  "config.pathfinding.vertical_range.tooltip": "可以打开目标容器的垂直距离\n单位：格\n\n💬 提升交互距离会使寻路计算量成倍增加！",
+  "config.pathfinding.vertical_range.tooltip": "可以打开目标箱子的垂直距离\n单位：格\n\n💬 提升交互距离会使寻路计算量成倍增加！",
 
   "config.section.memory.title": "深度记忆",
   "config.section.memory.desc": "深度记忆可以帮助铜傀儡有目的性地运输物品，大幅提高运输效率。\n\n✔ 铜傀儡会优先搬运记忆中记录的目标物品。\n✔ 当两只铜傀儡相遇时，它们会交换最新的记忆信息。\n✔ 若某一物品无法被放入任何箱子，它会被送回铜箱子并暂时拉黑。\n✔ 铜傀儡会逐渐忘记长期未访问的箱子。",

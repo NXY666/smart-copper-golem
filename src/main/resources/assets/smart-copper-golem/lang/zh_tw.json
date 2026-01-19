@@ -1,14 +1,14 @@
 {
-  "modmenu.nameTranslation.smart-copper-golem": "智能銅傀儡",
-  "modmenu.summaryTranslation.smart-copper-golem": "重構原版銅傀儡行為邏輯，並新增深度記憶支援，讓它們更聰明、更有效率。",
+  "modmenu.nameTranslation.smart-copper-golem": "智能銅魔像",
+  "modmenu.summaryTranslation.smart-copper-golem": "重構原版銅魔像行為邏輯，並新增深度記憶支援，讓它們更聰明、更有效率。",
 
-  "screen.smart_copper_golem.config.title": "Smart Copper Golem 設定",
+  "screen.smart_copper_golem.config.title": "智能銅魔像 設定",
 
   "config.section.transport.title": "運輸設定",
-  "config.section.transport.desc": "物品運輸為銅傀儡的基本能力。\n\n✔ 銅傀儡會嘗試開啟桶子及潛影盒。\n❌ 移除掃描箱子數量的上限。",
+  "config.section.transport.desc": "物品運輸為銅魔像的基本能力。\n\n✔ 銅魔像會嘗試開啟木桶及界伏盒。\n❌ 移除掃描儲物箱數量的上限。",
 
-  "config.transport.target_interaction_time.label": "容器互動時間",
-  "config.transport.target_interaction_time.tooltip": "檢查容器所需時間（單位：刻）",
+  "config.transport.target_interaction_time.label": "儲物箱互動時間",
+  "config.transport.target_interaction_time.tooltip": "檢查儲物箱所需時間（單位：刻）",
 
   "config.transport.max_stack_size.label": "最大搬運數量",
   "config.transport.max_stack_size.tooltip": "每次可搬運的最大物品數量（單位：個）\n\n※ 不得超過遊戲內物品堆疊上限。",
@@ -21,28 +21,28 @@
   "config.transport.match_mode.unknown": "未定義模式",
 
   "config.section.pathfinding.title": "尋路設定",
-  "config.section.pathfinding.desc": "尋路為銅傀儡的重要能力。\n\n✔ 重建原版尋路邏輯，大幅提升到達目標的成功率。",
+  "config.section.pathfinding.desc": "尋路為銅魔像的重要能力。\n\n✔ 重建原版尋路邏輯，大幅提升到達目標的成功率。",
 
   "config.pathfinding.horizontal_range.label": "水平互動範圍",
-  "config.pathfinding.horizontal_range.tooltip": "可開啟目標容器的水平距離（單位：方塊）\n\n※ 增加範圍將提高尋路計算量。",
+  "config.pathfinding.horizontal_range.tooltip": "可開啟目標儲物箱的水平距離（單位：方塊）\n\n※ 增加範圍將提高尋路計算量。",
 
   "config.pathfinding.vertical_range.label": "垂直互動範圍",
-  "config.pathfinding.vertical_range.tooltip": "可開啟目標容器的垂直距離（單位：方塊）\n\n※ 增加範圍將提高尋路計算量。",
+  "config.pathfinding.vertical_range.tooltip": "可開啟目標儲物箱的垂直距離（單位：方塊）\n\n※ 增加範圍將提高尋路計算量。",
 
   "config.section.memory.title": "深度記憶設定",
-  "config.section.memory.desc": "深度記憶讓銅傀儡更有效率地運送物品。\n\n✔ 銅傀儡會優先處理已記錄的物品容器。\n✔ 銅傀儡相遇時會交換記憶資訊。\n✔ 無法放入任何容器的物品會送回銅箱，並暫時忽略。\n✔ 長時間未訪問的容器記憶將逐漸遺忘。",
+  "config.section.memory.desc": "深度記憶讓銅魔像更有效率地運送物品。\n\n✔ 銅魔像會優先處理已記錄的物品儲物箱。\n✔ 銅魔像相遇時會交換記憶資訊。\n✔ 無法放入任何儲物箱的物品會送回銅儲物箱，並暫時忽略。\n✔ 長時間未訪問的儲物箱記憶將逐漸遺忘。",
 
   "config.memory.blacklist_duration.label": "物品忽略時間",
-  "config.memory.blacklist_duration.tooltip": "無法投遞的物品將送回銅箱並在此期間忽略（單位：刻）",
+  "config.memory.blacklist_duration.tooltip": "無法投遞的物品將送回銅儲物箱並在此期間忽略（單位：刻）",
 
   "config.memory.chest_expiration.label": "記憶保留時間",
-  "config.memory.chest_expiration.tooltip": "與容器相關的記憶會在此時間後清除（單位：刻）",
+  "config.memory.chest_expiration.tooltip": "與儲物箱相關的記憶會在此時間後清除（單位：刻）",
 
   "config.memory.sync_cooldown.label": "記憶同步冷卻時間",
   "config.memory.sync_cooldown.tooltip": "成功同步後暫停記憶交換的時間（單位：刻）\n\n※ 設定過低可能導致效能下降。",
 
   "config.memory.sync_distance.label": "記憶同步距離",
-  "config.memory.sync_distance.tooltip": "兩個銅傀儡在此距離內相遇時觸發記憶同步（單位：方塊）",
+  "config.memory.sync_distance.tooltip": "兩個銅魔像在此距離內相遇時觸發記憶同步（單位：方塊）",
 
   "config.error.min_interaction_time": "互動時間至少需 10 刻",
   "config.error.min_transport_item": "至少需搬運 1 個物品",

@@ -7,8 +7,8 @@
   "config.section.transport.title": "Transport",
   "config.section.transport.desc": "Item transportation is a basic ability of the Copper Golem.\n\n✔ Copper Golems will attempt to open Barrels and Shulker Boxes.\n❌ The limit on the number of Chests to scan has been removed.",
 
-  "config.transport.target_interaction_time.label": "Container Interaction Time",
-  "config.transport.target_interaction_time.tooltip": "Time spent inspecting a container\nUnit: ticks",
+  "config.transport.target_interaction_time.label": "Chest Interaction Time",
+  "config.transport.target_interaction_time.tooltip": "Time spent inspecting a chest\nUnit: ticks",
 
   "config.transport.max_stack_size.label": "Maximum Pickup Amount",
   "config.transport.max_stack_size.tooltip": "Maximum number of items transported per operation\nUnit: items\n\n💬 This option cannot exceed the in-game item stack size limit.",
@@ -24,19 +24,19 @@
   "config.section.pathfinding.desc": "Pathfinding is a basic ability of the Copper Golem.\n\n✔ Rebuilds vanilla pathfinding logic, greatly improving the success rate of reaching targets.",
 
   "config.pathfinding.horizontal_range.label": "Horizontal Interaction Range",
-  "config.pathfinding.horizontal_range.tooltip": "Horizontal distance at which the target container can be opened\nUnit: blocks\n\n💬 Increasing the interaction range will multiply pathfinding computation cost!",
+  "config.pathfinding.horizontal_range.tooltip": "Horizontal distance at which the target chest can be opened\nUnit: blocks\n\n💬 Increasing the interaction range will multiply pathfinding computation cost!",
 
   "config.pathfinding.vertical_range.label": "Vertical Interaction Range",
-  "config.pathfinding.vertical_range.tooltip": "Vertical distance at which the target container can be opened\nUnit: blocks\n\n💬 Increasing the interaction range will multiply pathfinding computation cost!",
+  "config.pathfinding.vertical_range.tooltip": "Vertical distance at which the target chest can be opened\nUnit: blocks\n\n💬 Increasing the interaction range will multiply pathfinding computation cost!",
 
   "config.section.memory.title": "Deep Memory",
-  "config.section.memory.desc": "Deep Memory allows Copper Golems to transport items with purpose, greatly improving transport efficiency.\n\n✔ Copper Golems will prioritize items recorded in their memory.\n✔ When two Copper Golems meet, they exchange the latest memory information.\n✔ If an item cannot be placed into any container, it will be returned to the Copper Chest and temporarily blacklisted.\n✔ Copper Golems will gradually forget containers that have not been visited for a long time.",
+  "config.section.memory.desc": "Deep Memory allows Copper Golems to transport items with purpose, greatly improving transport efficiency.\n\n✔ Copper Golems will prioritize items recorded in their memory.\n✔ When two Copper Golems meet, they exchange the latest memory information.\n✔ If an item cannot be placed into any chest, it will be returned to the Copper Chest and temporarily blacklisted.\n✔ Copper Golems will gradually forget chests that have not been visited for a long time.",
 
   "config.memory.blacklist_duration.label": "Item Ignore Duration",
   "config.memory.blacklist_duration.tooltip": "Undeliverable items will be returned to the Copper Chest and ignored for a period of time\nUnit: ticks",
 
   "config.memory.chest_expiration.label": "Memory Retention Duration",
-  "config.memory.chest_expiration.tooltip": "Container-related memory will be cleared after a period of time\nUnit: ticks",
+  "config.memory.chest_expiration.tooltip": "Chest-related memory will be cleared after a period of time\nUnit: ticks",
 
   "config.memory.sync_cooldown.label": "Memory Sync Cooldown",
   "config.memory.sync_cooldown.tooltip": "Memory syncing will be paused for a period after a successful exchange\nUnit: ticks\n\n💬 Reducing the cooldown may cause performance issues due to frequent syncing.",
