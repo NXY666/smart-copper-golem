@@ -176,7 +176,7 @@ class SmartTransportItemsBetweenContainers(
         fun getItemMatchMode(): ItemMatchMode {
             return try {
                 ItemMatchMode.valueOf(ConfigAccessor.itemMatchMode)
-            } catch (e: IllegalArgumentException) {
+            } catch (_: IllegalArgumentException) {
                 ItemMatchMode.ITEM_ONLY
             }
         }
@@ -551,10 +551,11 @@ class SmartTransportItemsBetweenContainers(
             }
         }
 
+        val memory = getOrCreateDeepMemory(mob)
+
         // 坐车时完全使用原版逻辑，不使用记忆加速
         if (!mob.isPassenger) {
             val handItem = mob.mainHandItem
-            val memory = getOrCreateDeepMemory(mob)
             val currentGameTime = level.gameTime
 
             // 如果手上有物品且不是返回源箱子，检查记忆（DestinationBlock逻辑）
@@ -642,8 +643,21 @@ class SmartTransportItemsBetweenContainers(
             return Optional.empty()
         }
 
-        // 通过路径测试选择最优箱子
-        val selectedCandidate = selectChestByPath(candidates, mob)
+        // --- 优先选择未被记忆的箱子 ---
+        val unknownCandidates = candidates.filter { chestPos -> !memory.isChestRemembered(chestPos) }
+
+        val selectionPool = if (unknownCandidates.isNotEmpty()) {
+            logger.debug(
+                "[scanDestinationBlock] 存在未被记忆的候选箱子，优先从 {} 个未记忆箱子中选择。",
+                unknownCandidates.size
+            )
+            unknownCandidates
+        } else {
+            candidates
+        }
+
+        // 通过路径测试选择最优箱子（在 selectionPool 中选择）
+        val selectedCandidate = selectChestByPath(selectionPool, mob)
 
         // 从集合中移除选中的箱子
         historyChests.remove(selectedCandidate)
@@ -1182,7 +1196,11 @@ class SmartTransportItemsBetweenContainers(
 
     private fun walkTowardsTarget(mob: PathfinderMob) {
         val currentTarget = target ?: return
-        val walkPos = currentTarget.walkPos ?: return  // walkPos 未激活时不移动
+        var walkPos = currentTarget.walkPos ?: return  // walkPos 未激活时不移动
+
+        if (mob.blockPosition() == walkPos) {
+            walkPos = currentTarget.pos
+        }
 
         setWalkAndLookTargetMemories(mob, walkPos, currentTarget.pos, speedModifier)
     }

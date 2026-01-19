@@ -52,8 +52,8 @@ data class MemoryConfig(
     /** 箱子记忆过期时间（游戏tick，一个游戏日 = 24000 ticks） */
     var chestExpirationTicks: Long = 24000L,
 
-    /** 记忆同步冷却时间（游戏tick，1分钟 = 1200 ticks） */
-    var syncCooldownTicks: Long = 1200L,
+    /** 记忆同步冷却时间（游戏tick，15 秒 = 300 ticks） */
+    var syncCooldownTicks: Long = 300L,
 
     /** 同步检测范围（方块） */
     var syncDetectionRange: Double = 1.5

@@ -242,6 +242,13 @@ data class CopperGolemDeepMemory(
     }
 
     /**
+     * 判断某个箱子位置是否在本地记忆中被记录（基于最后访问时间键）
+     */
+    fun isChestRemembered(chestPos: BlockPos): Boolean {
+        return chestLastAccessTime.containsKey(chestPos)
+    }
+
+    /**
      * 检查物品是否有记忆（未被拉黑且存在记忆）
      * 用于决定是否优先拾取该物品
      */
