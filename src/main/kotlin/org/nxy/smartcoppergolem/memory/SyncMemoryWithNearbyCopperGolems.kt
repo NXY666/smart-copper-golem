@@ -25,6 +25,7 @@ class SyncMemoryWithNearbyCopperGolems : Behavior<CopperGolem>(
 ) {
     companion object {
         private const val SYNC_MAX_DURATION = 20
+
         // 使用配置中的值
         private val DETECTION_RANGE: Double get() = ConfigAccessor.memorySyncDetectionRange
     }
@@ -70,7 +71,7 @@ class SyncMemoryWithNearbyCopperGolems : Behavior<CopperGolem>(
 
         // 如果有任何记忆更新，显示爱心粒子效果
         if (hasAnyUpdate) {
-            spawnHeartParticles(level, entity)
+            spawnMemoryParticles(level, entity)
         }
     }
 
@@ -98,27 +99,31 @@ class SyncMemoryWithNearbyCopperGolems : Behavior<CopperGolem>(
     }
 
     /**
-     * 在实体周围生成爱心粒子效果
+     * 在实体周围生成粒子效果
      */
-    private fun spawnHeartParticles(level: ServerLevel, entity: CopperGolem) {
-        // 在实体上方生成多个爱心粒子
-        val random = entity.random
-        for (i in 0..6) {
-            val offsetX = (random.nextDouble() - 0.5) * entity.bbWidth
-            val offsetY = random.nextDouble() * entity.bbHeight + 0.5
-            val offsetZ = (random.nextDouble() - 0.5) * entity.bbWidth
+    private fun spawnMemoryParticles(level: ServerLevel, entity: CopperGolem) {
+        val offsetX = 0.5 * entity.bbWidth
+        val offsetY = 1.4
+        val offsetZ = 0.5 * entity.bbWidth
 
-            level.sendParticles(
-                ParticleTypes.HEART,
-                entity.x + offsetX,
-                entity.y + offsetY,
-                entity.z + offsetZ,
-                1,
-                0.0,
-                0.0,
-                0.0,
-                0.0
-            )
-        }
+        level.sendParticles(
+            ParticleTypes.WAX_ON,
+            entity.x + offsetX,
+            entity.y + offsetY,
+            entity.z + offsetZ,
+            6,
+            0.3, 0.3, 0.3,
+            0.3
+        )
+
+        level.sendParticles(
+            ParticleTypes.WAX_OFF,
+            entity.x + offsetX,
+            entity.y + offsetY,
+            entity.z + offsetZ,
+            6,
+            0.3, 0.3, 0.3,
+            0.3
+        )
     }
 }
