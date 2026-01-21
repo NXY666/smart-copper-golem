@@ -55,7 +55,6 @@ data class CopperGolemDeepMemory(
             ItemTags.STONE_BRICKS, // 石砖四件套：普通/苔石/裂纹/錾制
             ItemTags.ANVIL, // 铁砧三状态：完好/轻度破损/严重破损
             ItemTags.RAILS, // 铁轨四件套：普通/动力/探测/激活
-            ItemTags.SAND, // 沙子家族：沙子/红沙/可疑沙子
             ItemTags.SLABS, // 所有台阶板物品形态（含木/石/深板岩/铜切制及涂蜡氧化序列/泥砖/凝灰岩/树脂砖等）
             ItemTags.STAIRS, // 所有楼梯物品形态（含木/石/深板岩/铜切制及涂蜡氧化序列/泥砖/凝灰岩/树脂砖等）
             ItemTags.WALLS, // 所有墙物品形态（含石系/深板岩/泥砖/凝灰岩/树脂砖等）
@@ -65,41 +64,22 @@ data class CopperGolemDeepMemory(
             ItemTags.LEAVES, // 各种树叶类（各木种树叶 + 杜鹃叶等）
             ItemTags.BAMBOO_BLOCKS, // 竹块两件套：竹块/去皮竹块
 
-            ItemTags.LOGS, // 所有原木类总集合（含 LOGS_THAT_BURN + 两种菌柄四件套）
-
             ItemTags.WOODEN_BUTTONS, // 所有木按钮（含下界木、竹、樱花、苍白橡木等）
             ItemTags.STONE_BUTTONS, // 石按钮 + 磨制黑石按钮
-            ItemTags.BUTTONS, // 所有按钮（木按钮 + 石按钮系）
             ItemTags.WOODEN_PRESSURE_PLATES, // 所有木质压力板（含下界木、竹、樱花、苍白橡木等）
             ItemTags.WOODEN_DOORS, // 所有木门（含下界木、竹、樱花、苍白橡木等）
-            ItemTags.DOORS, // 所有门（木门 + 铁门 + 铜门全序列：氧化各阶段/涂蜡各阶段）
             ItemTags.WOODEN_TRAPDOORS, // 所有木活板门（含下界木、竹、樱花、苍白橡木等）
-            ItemTags.TRAPDOORS, // 所有活板门（木活板门 + 铁活板门 + 铜活板门全序列：氧化各阶段/涂蜡各阶段）
             ItemTags.WOODEN_STAIRS, // 所有木楼梯（含下界木、竹、樱花、苍白橡木等）
             ItemTags.WOODEN_SLABS, // 所有木台阶板（含下界木、竹、樱花、苍白橡木等）
             ItemTags.WOODEN_FENCES, // 所有木栅栏（含下界木、竹、樱花、苍白橡木等）
-            ItemTags.FENCES, // 所有栅栏（木栅栏 + 下界砖栅栏）
-            ItemTags.FENCE_GATES, // 所有栅栏门（含下界木、竹、樱花、苍白橡木等）
-            ItemTags.SIGNS, // 所有木牌（各木种，含下界木、竹、樱花、苍白橡木等）
             ItemTags.HANGING_SIGNS, // 所有悬挂式木牌（各木种，含下界木、竹、樱花、苍白橡木等）
             ItemTags.WOODEN_SHELVES, // 所有木架（各木种，含下界木、竹、樱花、苍白橡木等）
-
-            ItemTags.GOLD_ORES, // 金矿石：主世界金矿石 + 下界金矿石 + 深层金矿石
-            ItemTags.IRON_ORES, // 铁矿石：主世界铁矿石 + 深层铁矿石
-            ItemTags.DIAMOND_ORES, // 钻石矿石：主世界 + 深层
-            ItemTags.REDSTONE_ORES, // 红石矿石：主世界 + 深层
-            ItemTags.LAPIS_ORES, // 青金石矿石：主世界 + 深层
-            ItemTags.COAL_ORES, // 煤矿石：主世界 + 深层
-            ItemTags.EMERALD_ORES, // 绿宝石矿石：主世界 + 深层
-            ItemTags.COPPER_ORES, // 铜矿石：主世界 + 深层
 
             ItemTags.COPPER, // 铜块全序列：氧化各阶段 + 涂蜡各阶段
             ItemTags.COPPER_CHESTS, // 铜箱子全序列：氧化各阶段 + 涂蜡各阶段
             ItemTags.LIGHTNING_RODS, // 避雷针全序列：氧化各阶段 + 涂蜡各阶段
             ItemTags.COPPER_GOLEM_STATUES, // 铜傀儡雕像全序列：氧化各阶段 + 涂蜡各阶段
-            ItemTags.CHAINS, // 链条：铁链 + 铜链系列（铜链含多种形态变体）
             ItemTags.LANTERNS, // 灯笼：普通灯笼/灵魂灯笼 + 铜灯笼系列（含多种形态变体）
-            ItemTags.BARS, // 栏杆：铁栏杆 + 铜栏杆系列（含多种形态变体）
 
             ItemTags.BOATS, // 所有普通船/竹筏（各木种）并且包含** CHEST_BOATS（也就是"船类总集合"）
 
@@ -116,7 +96,6 @@ data class CopperGolemDeepMemory(
             ItemTags.SKULLS, // 各种头颅/头：玩家头、苦力怕/僵尸/骷髅/凋零骷髅/末影龙/猪灵
 
             ItemTags.ARROWS, // 箭三件套：普通箭/药箭/光灵箭
-            ItemTags.COMPASSES, // 指南针两件套：指南针/追溯指南针
             ItemTags.COALS, // 煤两件套：煤炭/木炭
             ItemTags.EGGS, // 蛋类：普通鸡蛋 + 蓝色蛋 + 棕色蛋
             ItemTags.LECTERN_BOOKS, // 书与笔/成书（讲台可放的那两种）
@@ -124,12 +103,40 @@ data class CopperGolemDeepMemory(
             ItemTags.DECORATED_POT_SHERDS, // 所有陶片（陶罐纹样陶片的全集）
 
             // Fabric Conventional 标签
+            ConventionalItemTags.DYES,             // 染料（不同颜色）
+            ConventionalItemTags.EGGS,             // 蛋类（不同颜色）
             ConventionalItemTags.CONCRETES,             // 混凝土（不同颜色）
             ConventionalItemTags.CONCRETE_POWDERS,      // 混凝土粉末（不同颜色）
             ConventionalItemTags.GLAZED_TERRACOTTAS,    // 带釉陶瓦（不同颜色）
-            ConventionalItemTags.GLASS_BLOCKS,          // 玻璃块（不同颜色）
+            ConventionalItemTags.WOODEN_FENCES,    // 木栅栏（不同木材）
+            ConventionalItemTags.WOODEN_FENCE_GATES, // 木栅栏门（不同木材）
+            ConventionalItemTags.GLASS_BLOCKS_TINTED,
+            ConventionalItemTags.GLASS_BLOCKS_CHEAP,
+            ConventionalItemTags.GLASS_BLOCKS_COLORLESS,
             ConventionalItemTags.GLASS_PANES,           // 玻璃板（不同颜色）
             ConventionalItemTags.MUSIC_DISCS,            // 音乐唱片（不同种类）
+            ConventionalItemTags.ENTITY_WATER_BUCKETS,    // 水桶（鱼类不同种类）
+            ConventionalItemTags.RED_SANDSTONE_BLOCKS,
+            ConventionalItemTags.UNCOLORED_SANDSTONE_BLOCKS,
+            ConventionalItemTags.RED_SANDSTONE_SLABS,
+            ConventionalItemTags.UNCOLORED_SANDSTONE_SLABS,
+            ConventionalItemTags.RED_SANDSTONE_STAIRS,
+            ConventionalItemTags.UNCOLORED_SANDSTONE_STAIRS,
+            ConventionalItemTags.SMALL_FLOWERS,
+            ConventionalItemTags.TALL_FLOWERS,
+            ConventionalItemTags.COOKED_FISH_FOODS,
+            ConventionalItemTags.RAW_FISH_FOODS,
+            ConventionalItemTags.COOKED_MEAT_FOODS,
+            ConventionalItemTags.RAW_MEAT_FOODS,
+            ConventionalItemTags.VEGETABLE_FOODS,
+            ConventionalItemTags.OVERWORLD_NATURAL_LOGS,
+            ConventionalItemTags.NETHER_NATURAL_LOGS,
+            ConventionalItemTags.ORES_IN_GROUND_STONE,
+            ConventionalItemTags.ORES_IN_GROUND_DEEPSLATE,
+            ConventionalItemTags.BOTTLE_POTIONS,
+            ConventionalItemTags.BUDS,
+            ConventionalItemTags.STRIPPED_LOGS,
+            ConventionalItemTags.STRIPPED_WOODS
         )
 
         /**
