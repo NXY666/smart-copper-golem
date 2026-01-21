@@ -107,7 +107,7 @@ object MobPathSearcher {
                     if (
                         !aboveAabbs.any { aboveAabb ->
                             val aboveAabbTopCenter =
-                                aboveAabb.bottomCenter.add(x.toDouble(), y + aboveAabb.ysize, z.toDouble())
+                                aboveAabb.bottomCenter.add(x.toDouble(), y + aboveAabb.ysize - 1.0, z.toDouble())
                             val eyePos = MobUtil.addMobEyeHeightToFeetPosY(mob, aboveAabbTopCenter)
                             BlockVisibilityChecker.isBlockVisible(level, eyePos, targetBlockPos)
                         }
