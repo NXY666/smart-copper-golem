@@ -461,24 +461,28 @@ object BlockVisibilityChecker {
 
         val faces = mutableListOf<Vec3>()
 
+        val halfXSize = box.xsize * 0.5
+        val halfYSize = box.ysize * 0.5
+        val halfZSize = box.zsize * 0.5
+
         // X轴：根据方向选择 -X 或 +X 面
-        if (dirX > 0) {
+        if (dirX > halfXSize) {
             faces.add(Vec3(maxX, midY, midZ)) // +X 面
-        } else {
+        } else if (dirX < -halfXSize) {
             faces.add(Vec3(minX, midY, midZ)) // -X 面
         }
 
         // Y轴：根据方向选择 -Y 或 +Y 面
-        if (dirY > 0) {
+        if (dirY > halfYSize) {
             faces.add(Vec3(midX, maxY, midZ)) // +Y 面
-        } else {
+        } else if (dirY < -halfYSize) {
             faces.add(Vec3(midX, minY, midZ)) // -Y 面
         }
 
         // Z轴：根据方向选择 -Z 或 +Z 面
-        if (dirZ > 0) {
+        if (dirZ > halfZSize) {
             faces.add(Vec3(midX, midY, maxZ)) // +Z 面
-        } else {
+        } else if (dirZ < -halfZSize) {
             faces.add(Vec3(midX, midY, minZ)) // -Z 面
         }
 //        faces.add(Vec3(maxX, midY, midZ))
@@ -508,10 +512,14 @@ object BlockVisibilityChecker {
         val maxY = box.maxY
         val maxZ = box.maxZ
 
+        val halfXSize = box.xsize * 0.5
+        val halfYSize = box.ysize * 0.5
+        val halfZSize = box.zsize * 0.5
+
         // 确定不可见侧（背对观察者的一侧）
-        val invisibleX = if (dirX > 0) minX else maxX
-        val invisibleY = if (dirY > 0) minY else maxY
-        val invisibleZ = if (dirZ > 0) minZ else maxZ
+        val invisibleX = if (dirX > halfXSize) minX else if (dirX < -halfXSize) maxX else null
+        val invisibleY = if (dirY > halfYSize) minY else if (dirY < -halfYSize) maxY else null
+        val invisibleZ = if (dirZ > halfZSize) minZ else if (dirZ < -halfZSize) maxZ else null
 
         val corners = mutableListOf<Vec3>()
 
@@ -519,12 +527,9 @@ object BlockVisibilityChecker {
         for (x in listOf(minX, maxX)) {
             for (y in listOf(minY, maxY)) {
                 for (z in listOf(minZ, maxZ)) {
-                    // 如果这个角的所有三个坐标都在不可见侧，则它不可见
-                    val isInvisible = (x == invisibleX) && (y == invisibleY) && (z == invisibleZ)
-                    if (!isInvisible) {
-                        corners.add(Vec3(x, y, z))
-                    }
-//                    corners.add(Vec3(x, y, z))
+                    // 跳过不可见的角
+                    if (x == invisibleX && y == invisibleY && z == invisibleZ) continue
+                    corners.add(Vec3(x, y, z))
                 }
             }
         }
