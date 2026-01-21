@@ -31,7 +31,8 @@ data class TransportItemTarget(
     val pos: BlockPos,
     val container: Container,
     val targetBlockEntity: BlockEntity,
-    val targetBlockState: BlockState
+    val targetBlockState: BlockState,
+    var memoryValidationTime: Long
 ) {
     // 路径相关字段（延迟计算，调用 activatePath 后才会初始化）
     var walkPos: BlockPos? = null
@@ -216,10 +217,7 @@ data class TransportItemTarget(
     }
 
     companion object {
-        fun createTarget(
-            targetBlockEntity: BlockEntity,
-            level: Level
-        ): TransportItemTarget? {
+        fun createTarget(targetBlockEntity: BlockEntity, level: Level): TransportItemTarget? {
             val targetBlockPos = targetBlockEntity.blockPos
             val targetBlockState = targetBlockEntity.blockState
             val container = getBlockEntityContainer(targetBlockEntity, targetBlockState, level, targetBlockPos)
@@ -229,7 +227,8 @@ data class TransportItemTarget(
                 targetBlockPos,
                 container,
                 targetBlockEntity,
-                targetBlockState
+                targetBlockState,
+                level.gameTime
             )
         }
 

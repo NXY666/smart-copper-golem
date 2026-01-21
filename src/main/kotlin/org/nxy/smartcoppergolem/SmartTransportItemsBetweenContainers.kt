@@ -48,7 +48,6 @@ import kotlin.math.max
 private const val STUCK_CONSECUTIVE_THRESHOLD = 3
 private const val STUCK_TOTAL_THRESHOLD = 9
 private const val STUCK_DETECTION_AREA_SQR = 9.0
-private const val VISITED_POSITIONS_MEMORY_TIME = 6000L
 private const val CHEST_MEMORY_CLEANUP_INTERVAL = 1200L
 private const val IDLE_COOLDOWN_TICKS = 140
 private const val CLOSE_ENOUGH_TO_START_QUEUING_DISTANCE = 3.0
@@ -121,11 +120,6 @@ private class StuckDetector {
      * 获取总卡住次数
      */
     fun getTotalStuckCount(): Int = totalStuckCount
-
-    /**
-     * 获取上次卡住位置
-     */
-    fun getLastStuckPos(): BlockPos? = lastStuckPos
 }
 
 /**
@@ -417,9 +411,7 @@ class SmartTransportItemsBetweenContainers(
             val blockEntity = level.getBlockEntity(chestPos)
             if (blockEntity !is BaseContainerBlockEntity) return@filter false
 
-            val target = TransportItemTarget.createTarget(
-                blockEntity, level
-            ) ?: return@filter false
+            val target = TransportItemTarget.createTarget(blockEntity, level) ?: return@filter false
 
             isSourceBlockValidToPick(
                 level,
@@ -431,7 +423,7 @@ class SmartTransportItemsBetweenContainers(
 
         // 如果没有有效箱子，返回空
         if (validChests.isEmpty()) {
-            mob.brain.setMemory(ModMemoryModuleTypes.CHEST_HISTORY, historyChests)
+            setChestHistory(mob, historyChests)
             return Optional.empty()
         }
 
@@ -441,15 +433,13 @@ class SmartTransportItemsBetweenContainers(
 
         // 从历史集合中移除选中的箱子
         historyChests.remove(selectedChestPos)
-        mob.brain.setMemory(ModMemoryModuleTypes.CHEST_HISTORY, historyChests)
+        setChestHistory(mob, historyChests)
 
         // 返回选中的箱子（已验证有效）
         val blockEntity = level.getBlockEntity(selectedChestPos)
         if (blockEntity !is BaseContainerBlockEntity) return Optional.empty()
 
-        val target = TransportItemTarget.createTarget(
-            blockEntity, level
-        ) ?: return Optional.empty()
+        val target = TransportItemTarget.createTarget(blockEntity, level) ?: return Optional.empty()
         return Optional.of(target)
     }
 
@@ -555,42 +545,54 @@ class SmartTransportItemsBetweenContainers(
 
         // 坐车时完全使用原版逻辑，不使用记忆加速
         if (!mob.isPassenger) {
-            val handItem = mob.mainHandItem
+            val item = mob.mainHandItem.item
             val currentGameTime = level.gameTime
 
-            // 如果手上有物品且不是返回源箱子，检查记忆（DestinationBlock逻辑）
-            if (!handItem.isEmpty) {
-                val item = handItem.item
+            // 检查是否被拉黑
+            if (memory.isItemBlocked(item, currentGameTime)) {
+                // 物品被拉黑，返回铜箱子
+                hasTransportFailed = true
+                setChestHistory(mob, historyChests)
+                return scanSourceBlock(level, mob)
+            }
 
-                // 检查是否被拉黑
-                if (memory.isItemBlocked(item, currentGameTime)) {
-                    // 物品被拉黑，返回铜箱子
-                    hasTransportFailed = true
-                    return scanSourceBlock(level, mob)
+            // 检查记忆中是否有这个物品对应的箱子（带范围验证）
+            val rememberedChest = memory.getChestPosForItem(
+                item,
+                mob.blockPosition(),
+                getHorizontalSearchDistance(mob),
+                getVerticalSearchDistance(mob),
+                getItemMatchMode()
+            )
+            rememberedChest?.let { rememberedChest ->
+                // 直接根据位置创建 target，然后单独校验是否为目的箱子可用
+                val rememberedTarget = TransportItemTarget.createTarget(rememberedChest, level) ?: return@let
+
+                // 箱子访问时间不晚于拾取时间，是我自己的记忆或更早的记忆，按原逻辑处理
+                if (isDestinationBlockValidToPick(
+                        level, mob,
+                        rememberedTarget,
+                        visitedPositions,
+                        unreachablePositions
+                    )
+                ) {
+                    setChestHistory(mob, historyChests)
+                    return Optional.of(rememberedTarget)
                 }
+            } ?: run {
+                // 箱子的最后访问时间如果晚于我的拾取时间，可能是从其他傀儡同步来的记忆
+                // 验证箱子当前内容是否与手中物品匹配
+                val pickupTime = memory.getLastPickupTime() ?: return@run
+                memory.getChestsAccessedSince(pickupTime).forEach { chestPos ->
+                    if (!historyChests.contains(chestPos)) return@forEach
 
-                // 检查记忆中是否有这个物品对应的箱子（带范围验证）
-                val rememberedChest = memory.getChestPosForItem(
-                    item,
-                    mob.blockPosition(),
-                    getHorizontalSearchDistance(mob),
-                    getVerticalSearchDistance(mob),
-                    getItemMatchMode()
-                )
-                if (rememberedChest != null) {
-                    // 直接根据位置创建 target，然后单独校验是否为目的箱子可用
-                    val rememberedTarget = TransportItemTarget.createTarget(rememberedChest, level)
-                    if (rememberedTarget != null) {
-                        if (isDestinationBlockValidToPick(
-                                level, mob,
-                                rememberedTarget,
-                                visitedPositions,
-                                unreachablePositions
-                            )
-                        ) {
-                            return Optional.of(rememberedTarget)
-                        }
-                    }
+                    // 内容不匹配，标记为已访问
+                    logger.debug(
+                        "[scanDestinationBlock] 已知箱子 {} 的记忆内容不匹配物品 {}，标记为已访问。",
+                        chestPos, mob.mainHandItem.item
+                    )
+                    setVisitedBlockPos(mob, level, chestPos)
+                    historyChests.remove(chestPos)
                 }
             }
         }
@@ -626,10 +628,9 @@ class SmartTransportItemsBetweenContainers(
                 && BlockVisibilityChecker.isBlockVisible(level, mob, chestPos)
             ) {
                 historyChests.remove(chestPos)
-                mob.brain.setMemory(ModMemoryModuleTypes.CHEST_HISTORY, historyChests)
+                setChestHistory(mob, historyChests)
 
                 logger.debug("[scanDestinationBlock] 找到距离内可视的箱子 {}，直接使用。", chestPos)
-
                 return Optional.of(target)
             }
 
@@ -639,7 +640,7 @@ class SmartTransportItemsBetweenContainers(
 
         // 如果没有有效候选箱子，返回空
         if (candidates.isEmpty()) {
-            mob.brain.setMemory(ModMemoryModuleTypes.CHEST_HISTORY, historyChests)
+            setChestHistory(mob, historyChests)
             return Optional.empty()
         }
 
@@ -661,10 +662,9 @@ class SmartTransportItemsBetweenContainers(
 
         // 从集合中移除选中的箱子
         historyChests.remove(selectedCandidate)
-        mob.brain.setMemory(ModMemoryModuleTypes.CHEST_HISTORY, historyChests)
+        setChestHistory(mob, historyChests)
 
         val selectedTarget = chestTargetMap[selectedCandidate] ?: return Optional.empty()
-
         return Optional.of(selectedTarget)
     }
 
@@ -754,17 +754,15 @@ class SmartTransportItemsBetweenContainers(
     private fun isTargetValid(level: Level, mob: PathfinderMob): Boolean {
         val currentTarget = target ?: return false
 
-        if (
-            !isWantedBlock(mob, currentTarget.targetBlockState)
-            || !targetHasNotChanged(level, currentTarget)
-            || isTargetBlocked(level, currentTarget)
-        ) {
+        val isWanted = isWantedBlock(mob, currentTarget.targetBlockState)
+        val hasNotChanged = targetHasNotChanged(level, currentTarget)
+        val isBlocked = isTargetBlocked(level, currentTarget)
+        val isMismatchMemory = isTargetMismatchInRecentMemory(mob, currentTarget)
+
+        if (!isWanted || !hasNotChanged || isBlocked || isMismatchMemory) {
             logger.debug(
-                "[isTargetValid] 目标 {} 不再有效。 isWanted: {}, hasChanged: {}, isBlocked: {}",
-                currentTarget.pos,
-                isWantedBlock(mob, currentTarget.targetBlockState),
-                !targetHasNotChanged(level, currentTarget),
-                isTargetBlocked(level, currentTarget)
+                "[isTargetValid] 目标 {} 不再有效。 isWanted: {}, hasChanged: {}, isBlocked: {}, isMismatchMemory: {}",
+                currentTarget.pos, isWanted, !hasNotChanged, isBlocked, isMismatchMemory
             )
             return false
         }
@@ -871,6 +869,47 @@ class SmartTransportItemsBetweenContainers(
         return !ContainerHelper.canOpenContainer(level, target.pos, target.targetBlockState, target.container)
     }
 
+    /**
+     * 检查目标箱子的最近记忆内容是否与手中物品不匹配
+     * 如果记忆验证时间早于记忆中箱子最后访问时间，说明记忆可能可能未经验证
+     * 此时需要验证箱子当前内容是否与手中物品匹配
+     */
+    private fun isTargetMismatchInRecentMemory(mob: PathfinderMob, target: TransportItemTarget): Boolean {
+        // 只在手持物品且目标是目的箱子时检查
+        if (isPickingUpItems(mob) || isReturningToSourceBlock(mob)) {
+            return false
+        }
+
+        val memory = getOrCreateDeepMemory(mob)
+
+        // 检查目标箱子是否在拾取时间之后被访问过
+        val chestAccessTime = memory.getChestLastAccessTime(target.pos) ?: return false
+
+        // 如果已经验证过这个箱子的记忆（验证时间 >= 箱子记忆时间），直接返回
+        if (target.memoryValidationTime >= chestAccessTime) {
+            return false
+        }
+
+        // 箱子被访问过，这可能是从其他傀儡同步来的记忆
+        // 验证箱子当前内容是否真的匹配手中物品
+        val container = target.container
+        val handItem = mob.mainHandItem
+
+        // 如果箱子内有匹配的物品，说明记忆是准确的，目标仍然有效
+        if (hasItemMatchingHandItem(mob, container)) {
+            // 更新验证时间，避免下次重复验证
+            target.memoryValidationTime = chestAccessTime
+            return false
+        }
+
+        // 箱子内容不匹配，说明其他傀儡已经处理过了
+        logger.debug(
+            "[isTargetMismatchInRecentMemory] 目标箱子 {} 的记忆内容不匹配物品 {}，可能已被其他傀儡处理。",
+            target.pos, handItem.item
+        )
+        return true
+    }
+
     private fun targetHasNotChanged(level: Level, target: TransportItemTarget): Boolean {
         return target.targetBlockEntity == level.getBlockEntity(target.pos)
     }
@@ -917,6 +956,13 @@ class SmartTransportItemsBetweenContainers(
         return mob.brain.getMemory(ModMemoryModuleTypes.CHEST_HISTORY).orElse(mutableSetOf())
     }
 
+    /**
+     * 统一写入 CHEST_HISTORY 的辅助方法
+     */
+    private fun setChestHistory(mob: PathfinderMob, history: MutableSet<BlockPos>) {
+        mob.brain.setMemory(ModMemoryModuleTypes.CHEST_HISTORY, history)
+    }
+
     private fun isPositionAlreadyVisited(
         level: Level, target: TransportItemTarget,
         visitedPositions: Set<GlobalPos>,
@@ -935,11 +981,7 @@ class SmartTransportItemsBetweenContainers(
     private fun setVisitedBlockPos(mob: PathfinderMob, level: Level, blockPos: BlockPos) {
         val set = HashSet(getVisitedPositions(mob))
         set.add(GlobalPos(level.dimension(), blockPos))
-        mob.brain.setMemoryWithExpiry(
-            MemoryModuleType.VISITED_BLOCK_POSITIONS,
-            set,
-            VISITED_POSITIONS_MEMORY_TIME
-        )
+        mob.brain.setMemory(MemoryModuleType.VISITED_BLOCK_POSITIONS, set)
     }
 
     private fun markVisitedBlockPosAsUnreachable(mob: PathfinderMob, level: Level, blockPos: BlockPos) {
@@ -949,16 +991,8 @@ class SmartTransportItemsBetweenContainers(
         val unreachableSet = HashSet(getUnreachablePositions(mob))
         unreachableSet.add(GlobalPos(level.dimension(), blockPos))
 
-        mob.brain.setMemoryWithExpiry(
-            MemoryModuleType.VISITED_BLOCK_POSITIONS,
-            visitedSet,
-            VISITED_POSITIONS_MEMORY_TIME
-        )
-        mob.brain.setMemoryWithExpiry(
-            MemoryModuleType.UNREACHABLE_TRANSPORT_BLOCK_POSITIONS,
-            unreachableSet,
-            VISITED_POSITIONS_MEMORY_TIME
-        )
+        mob.brain.setMemory(MemoryModuleType.VISITED_BLOCK_POSITIONS, visitedSet)
+        mob.brain.setMemory(MemoryModuleType.UNREACHABLE_TRANSPORT_BLOCK_POSITIONS, unreachableSet)
     }
 
     private fun isWantedBlock(mob: PathfinderMob, blockState: BlockState): Boolean {
@@ -1307,7 +1341,10 @@ class SmartTransportItemsBetweenContainers(
             // 未拾取到物品，停止当前目标
             stopTargetingCurrentTarget(mob)
         } else {
-            // 成功拾取到物品
+            // 成功拾取到物品，记录拾取时间
+            val currentGameTime = (mob.level() as ServerLevel).gameTime
+            val memory = getOrCreateDeepMemory(mob)
+            memory.setPickupTime(currentGameTime)
             clearMemoriesAfterMatchingTargetFound(mob)
         }
     }
@@ -1335,6 +1372,9 @@ class SmartTransportItemsBetweenContainers(
                 memory.blockItem(item, gameTime)
                 hasTransportFailed = false
             }
+            // 成功放置物品后清空拾取记录
+            val memory = getOrCreateDeepMemory(mob)
+            memory.clearPickupTime()
             clearMemoriesAfterMatchingTargetFound(mob)
         } else {
             // 放置失败（箱子满了）

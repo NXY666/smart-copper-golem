@@ -30,7 +30,9 @@ data class CopperGolemDeepMemory(
     // 箱子位置 -> 最后访问时间（游戏tick）
     private val chestLastAccessTime: MutableMap<BlockPos, Long> = mutableMapOf(),
     // 上次记忆同步的时间（游戏tick）
-    private var lastMemorySyncTime: Long = 0L
+    private var lastMemorySyncTime: Long = 0L,
+    // 本傀儡上一次成功拾取物品的时间（游戏tick）
+    private var lastPickupTime: Long? = 0L
 ) {
     companion object {
         // 从配置中读取的常量
@@ -348,6 +350,22 @@ data class CopperGolemDeepMemory(
     }
 
     /**
+     * 记录拾取物品的时间和类型
+     * @param gameTime 当前游戏时间
+     */
+    fun setPickupTime(gameTime: Long) {
+        lastPickupTime = gameTime
+    }
+
+    fun clearPickupTime() {
+        lastPickupTime = null
+    }
+
+    fun getLastPickupTime(): Long? {
+        return lastPickupTime
+    }
+
+    /**
      * 清除所有过期的箱子记忆
      * 超过CHEST_MEMORY_EXPIRATION_TICKS未访问的箱子记忆将被清除
      * 
@@ -426,5 +444,33 @@ data class CopperGolemDeepMemory(
         }
 
         return hasUpdate
+    }
+
+    /**
+     * 获取在指定时间点之后被访问过的所有箱子位置。
+     *
+     * 该方法通常用于箱子记忆校验/同步逻辑，用来筛选最近一段时间内仍被交互的箱子，
+     * 以便判断哪些记忆仍然有效或需要参与同步。
+     *
+     * @param sinceTime 起始时间点（以游戏 tick 为单位），包含该时间点本身；
+     *                 仅返回最后访问时间 `>= sinceTime` 的箱子。
+     * @return 满足条件的箱子方块位置列表，每个元素对应一个在给定时间点之后仍被访问的箱子。
+     */
+    fun getChestsAccessedSince(sinceTime: Long): List<BlockPos> {
+        if (sinceTime < 0) {
+            // 如果传入的时间点无效，返回空列表
+            return emptyList()
+        }
+
+        return chestLastAccessTime.filter { (_, accessTime) ->
+            accessTime >= sinceTime
+        }.keys.toList()
+    }
+
+    /**
+     * 获取箱子的最后访问时间
+     */
+    fun getChestLastAccessTime(chestPos: BlockPos): Long? {
+        return chestLastAccessTime[chestPos]
     }
 }
