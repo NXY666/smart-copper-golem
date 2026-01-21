@@ -2,7 +2,7 @@
 
 English | [简体中文](README-zh_CN.md) | [繁體中文](README-zh_TW.md)
 
-	This mod is implemented entirely on the server side, the client only provides Mod Menu integration.
+> This mod is implemented entirely on the server side, the client only provides Mod Menu integration.
 
 Mojang has been extremely cautious in "benefiting players," with the Copper Golem being a prime example.
 

@@ -2,7 +2,7 @@
 
 [English](README.md) | 简体中文 | [繁體中文](README-zh_TW.md)
 
-	这个 Mod 功能实现均在 Server 端实现，客户端仅有 Mod Menu 集成。
+> 这个 Mod 功能实现均在 Server 端实现，客户端仅有 Mod Menu 集成。
 
 Mojang 在“造福玩家”方面显得极其谨慎，铜傀儡就是一个典型例子。
 

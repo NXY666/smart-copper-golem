@@ -2,7 +2,7 @@
 
 [English](README.md) | [简体中文](README-zh_CN.md) | 繁體中文
 
-	這個 Mod 功能實作均在伺服器端完成，客戶端僅有 Mod Menu 整合。
+> 這個 Mod 功能實作均在伺服器端完成，客戶端僅有 Mod Menu 整合。
 
 Mojang 在「造福玩家」方面顯得極其謹慎，銅魔像就是一個典型例子。
 
