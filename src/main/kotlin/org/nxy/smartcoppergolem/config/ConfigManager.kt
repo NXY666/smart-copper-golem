@@ -53,7 +53,6 @@ object ConfigManager {
 
             // 验证配置
             validateConfig()
-
         } catch (e: SerializationException) {
             logger.error("配置文件格式错误，使用默认配置", e)
             config = Config()

@@ -9,6 +9,7 @@ import net.minecraft.commands.CommandSourceStack
 import net.minecraft.commands.Commands.CommandSelection
 import net.minecraft.server.level.ServerLevel
 import org.nxy.smartcoppergolem.config.ConfigManager
+import org.nxy.smartcoppergolem.config.registerConfigReloadHook
 import org.nxy.smartcoppergolem.debug.DebugFlags
 import org.nxy.smartcoppergolem.debug.VisibilityCheckerParticle
 import org.nxy.smartcoppergolem.memory.ModMemoryModuleTypes
@@ -25,7 +26,9 @@ class SmartCopperGolem : ModInitializer {
 
         // 加载配置文件
         ConfigManager.load()
-        logger.info("[onInitialize] 配置文件加载完成")
+
+        // 注册 /reload 配置重载钩子（SERVER_DATA 资源重载）
+        registerConfigReloadHook()
 
         // 注册命令
         CommandRegistrationCallback.EVENT.register(CommandRegistrationCallback { dispatcher: CommandDispatcher<CommandSourceStack>, _: CommandBuildContext?, _: CommandSelection? ->
