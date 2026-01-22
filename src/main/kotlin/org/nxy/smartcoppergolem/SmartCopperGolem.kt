@@ -11,7 +11,7 @@ import net.minecraft.server.level.ServerLevel
 import org.nxy.smartcoppergolem.config.ConfigManager
 import org.nxy.smartcoppergolem.config.registerConfigReloadHook
 import org.nxy.smartcoppergolem.debug.DebugFlags
-import org.nxy.smartcoppergolem.debug.VisibilityCheckerParticle
+import org.nxy.smartcoppergolem.debug.VisibilityCheckerDebugger
 import org.nxy.smartcoppergolem.memory.ModMemoryModuleTypes
 import org.nxy.smartcoppergolem.util.logger
 
@@ -47,7 +47,7 @@ class SmartCopperGolem : ModInitializer {
 
     private fun onWorldTick(level: ServerLevel) {
         if (DebugFlags.visibilityCheckerParticleEnabled) {
-            VisibilityCheckerParticle.show(level)
+            VisibilityCheckerDebugger.show(level)
         }
     }
 }

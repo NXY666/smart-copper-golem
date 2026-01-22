@@ -5,14 +5,15 @@ import net.minecraft.core.BlockPos.MutableBlockPos
 import net.minecraft.core.particles.DustParticleOptions
 import net.minecraft.core.particles.ParticleOptions
 import net.minecraft.server.level.ServerLevel
-import net.minecraft.world.entity.Mob
+import net.minecraft.tags.BlockTags
+import net.minecraft.world.entity.animal.golem.CopperGolem
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import org.nxy.smartcoppergolem.util.BlockVisibilityChecker
 import java.util.function.Predicate
 
-object VisibilityCheckerParticle {
+object VisibilityCheckerDebugger {
     private const val HIT_PARTICLE_CORNER_COLOR: Int = 0xFF0000
     private const val HIT_PARTICLE_FACE_COLOR: Int = 0x33FF33
     private val HIT_PARTICLE_CORNER: ParticleOptions = DustParticleOptions(HIT_PARTICLE_CORNER_COLOR, 0.8f)
@@ -22,8 +23,8 @@ object VisibilityCheckerParticle {
         val gameTime = level.gameTime
         if ((gameTime % 10) != 0L) return
 
-        // 改为：遍历在线玩家，并收集每个玩家周围 64×64 区域内的所有 Mob（避免遍历全世界）
-        val mobs: MutableList<Mob> = mutableListOf()
+        // 改为：遍历在线玩家，并收集每个玩家周围 64×64 区域内的所有铜傀儡（避免遍历全世界）
+        val mobs: MutableList<CopperGolem> = mutableListOf()
         val halfSize = 32 // 64×64 区域的一半（左右各 32）
         for (player in level.players()) {
             val pPos = player.blockPosition()
@@ -33,9 +34,9 @@ object VisibilityCheckerParticle {
             )
             mobs.addAll(
                 level.getEntitiesOfClass(
-                    Mob::class.java,
+                    CopperGolem::class.java,
                     aabb,
-                    Predicate { obj: Mob? -> obj!!.isAlive }
+                    Predicate { obj: CopperGolem? -> obj!!.isAlive }
                 )
             )
         }
@@ -47,14 +48,14 @@ object VisibilityCheckerParticle {
 
     private fun scanNearbyChestsAndRaycast(
         level: ServerLevel,
-        mob: Mob,
+        mob: CopperGolem,
         hitParticleFace: ParticleOptions,
         hitParticleCorner: ParticleOptions
     ) {
         val center = mob.blockPosition()
         val r = 10
 
-        // 你要求：距离自己 < 5 格的普通箱子方块（Blocks.CHEST）
+        // 你要求：显示箱子/陷阱箱/木桶/潜影盒/铜箱子的粒子
         // 这里用方块立方体扫描；需要更精确可用距离过滤
         val pos = MutableBlockPos()
         for (dx in -r..r) {
@@ -63,7 +64,13 @@ object VisibilityCheckerParticle {
                     pos.set(center.x + dx, center.y + dy, center.z + dz)
 
                     val state = level.getBlockState(pos)
-                    if (!state.`is`(Blocks.CHEST) && !state.`is`(Blocks.BARREL)) continue
+                    if (
+                        !state.`is`(Blocks.CHEST) &&
+                        !state.`is`(Blocks.TRAPPED_CHEST) &&
+                        !state.`is`(Blocks.BARREL) &&
+                        !state.`is`(BlockTags.SHULKER_BOXES) &&
+                        !state.`is`(BlockTags.COPPER_CHESTS)
+                    ) continue
 
                     // 距离过滤：< 10 格（用 mob 中心到箱子中心）
                     val mobCenter = mob.boundingBox.center
@@ -78,7 +85,7 @@ object VisibilityCheckerParticle {
 
     private fun raycastToChestCollider(
         level: ServerLevel,
-        mob: Mob,
+        mob: CopperGolem,
         chestPos: BlockPos,
         hitParticleFace: ParticleOptions,
         hitParticleCorner: ParticleOptions
