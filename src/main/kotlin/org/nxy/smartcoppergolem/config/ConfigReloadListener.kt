@@ -18,7 +18,7 @@ object ConfigReloadListener : PreparableReloadListener {
         // 先过屏障（等其他 listener 的 prepare 完成）
         return preparationBarrier.wait(Unit)
             .thenRunAsync({
-                ConfigManager.load()
+                ConfigManager.reload()
             }, executor2)
     }
 }

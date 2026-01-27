@@ -150,7 +150,7 @@ data class TransportItemTarget(
 
         // 创建下一段路径
         val candidates = researchCandidates ?: run {
-            logger.warn("[continueResearching] 箱子 {} 研究没有候选点，第 {} 轮研究失败。", pos, researchAttempts + 1)
+            logger.debug("[continueResearching] 箱子 {} 研究没有候选点，第 {} 轮研究失败。", pos, researchAttempts + 1)
             return ResearchResult.FAILED
         }
 

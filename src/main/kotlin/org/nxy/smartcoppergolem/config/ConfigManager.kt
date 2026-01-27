@@ -38,32 +38,35 @@ object ConfigManager {
      * 如果文件不存在，创建默认配置文件
      */
     fun load() {
-        logger.info("加载配置文件: $configFile")
+        logger.debug("[load] 加载配置文件 {}", configFile)
 
         try {
             if (!configFile.exists()) {
-                logger.info("配置文件不存在，创建默认配置")
+                logger.debug("[load] 配置文件不存在，创建默认配置文件")
                 createDefaultConfig()
                 return
             }
 
             val configText = configFile.readText()
             config = json.decodeFromString<Config>(configText)
-            logger.info("配置文件加载成功")
+            logger.debug("[load] 配置文件 {} 加载成功", configFile)
 
             // 验证配置
             validateConfig()
         } catch (e: SerializationException) {
-            logger.error("配置文件格式错误，使用默认配置", e)
+            logger.debug("[load] 配置文件 {} 反序列化失败，使用默认配置。 e={}", configFile, e)
             config = Config()
             createDefaultConfig()
         } catch (e: IOException) {
-            logger.error("读取配置文件失败，使用默认配置", e)
+            logger.debug("[load] 读取配置文件 {} 失败，使用默认配置。 e={}", configFile, e)
             config = Config()
         } catch (e: Exception) {
-            logger.error("加载配置时发生未知错误，使用默认配置", e)
+            logger.debug("[load] 加载配置文件 {} 时发生未知错误，使用默认配置。 e={}", configFile, e)
             config = Config()
         }
+
+        // 保存修正后的配置
+        save()
     }
 
     /**
@@ -71,7 +74,7 @@ object ConfigManager {
      */
     fun save() {
         try {
-            logger.info("保存配置文件: $configFile")
+            logger.debug("[save] 保存配置文件到 {}", configFile)
 
             // 确保配置目录存在
             if (!Files.exists(configDir)) {
@@ -81,11 +84,11 @@ object ConfigManager {
             val configText = json.encodeToString(config)
             configFile.writeText(configText)
 
-            logger.info("配置文件保存成功")
+            logger.debug("[save] 配置文件 {} 保存成功", configFile)
         } catch (e: IOException) {
-            logger.error("保存配置文件失败", e)
+            logger.debug("[save] 保存配置文件 {} 失败。 e={}", configFile, e)
         } catch (e: Exception) {
-            logger.error("保存配置时发生未知错误", e)
+            logger.debug("[save] 保存配置文件 {} 时发生未知错误。 e={}", configFile, e)
         }
     }
 
@@ -160,7 +163,6 @@ object ConfigManager {
      * 重新加载配置文件
      */
     fun reload() {
-        logger.info("重新加载配置文件")
         load()
     }
 }
