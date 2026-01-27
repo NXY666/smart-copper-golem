@@ -108,9 +108,9 @@ object ConfigManager {
             needsSave = true
         }
 
-        if (config.transport.transportedItemMaxStackSize !in 1..64) {
-            val old = config.transport.transportedItemMaxStackSize
-            config = config.copy(transport = config.transport.copy(transportedItemMaxStackSize = old.coerceIn(1, 64)))
+        if (config.transport.itemMaxStackSize !in 1..64) {
+            val old = config.transport.itemMaxStackSize
+            config = config.copy(transport = config.transport.copy(itemMaxStackSize = old.coerceIn(1, 64)))
             needsSave = true
         }
 
@@ -122,13 +122,25 @@ object ConfigManager {
         }
 
         // 验证寻路配置（夹紧为最近合法值；最小值取 1）
-        if (config.pathfinding.horizontalInteractionRange < 1) {
-            config = config.copy(pathfinding = config.pathfinding.copy(horizontalInteractionRange = 1))
+        if (config.pathfinding.horizontalInteractionDistance < 1) {
+            config = config.copy(pathfinding = config.pathfinding.copy(horizontalInteractionDistance = 1))
             needsSave = true
         }
 
-        if (config.pathfinding.verticalInteractionRange < 1) {
-            config = config.copy(pathfinding = config.pathfinding.copy(verticalInteractionRange = 1))
+        if (config.pathfinding.verticalInteractionDistance < 1) {
+            config = config.copy(pathfinding = config.pathfinding.copy(verticalInteractionDistance = 1))
+            needsSave = true
+        }
+
+        if (config.pathfinding.horizontalSearchDistance !in 1..256) {
+            val old = config.pathfinding.horizontalSearchDistance
+            config = config.copy(pathfinding = config.pathfinding.copy(horizontalSearchDistance = old.coerceIn(1, 256)))
+            needsSave = true
+        }
+
+        if (config.pathfinding.verticalSearchDistance !in 1..128) {
+            val old = config.pathfinding.verticalSearchDistance
+            config = config.copy(pathfinding = config.pathfinding.copy(verticalSearchDistance = old.coerceIn(1, 128)))
             needsSave = true
         }
 

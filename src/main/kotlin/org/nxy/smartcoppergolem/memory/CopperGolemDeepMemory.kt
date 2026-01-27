@@ -18,14 +18,14 @@ import kotlin.math.abs
  * 存储结构：
  * - itemChestMap: 物品 <-> 箱子位置的双向映射（多个物品可能对应同一箱子）
  * - tagChestMap: tag <-> 箱子位置的双向映射（多个tag可能对应同一箱子）
- * - blacklistedItems: 被拉黑的物品 -> 拉黑结束的游戏时间
+ * - blacklistedItems: 被忽略的物品 -> 忽略结束的游戏时间
  */
 data class CopperGolemDeepMemory(
     // 物品 <-> 箱子位置的双向映射（多个物品可能对应同一箱子）
     private val itemChestMap: BiMultiMap<Item, BlockPos> = BiMultiMap(),
     // tag <-> 箱子位置的双向映射（多个tag可能对应同一箱子）
     private val tagChestMap: BiMultiMap<TagKey<Item>, BlockPos> = BiMultiMap(),
-    // 被拉黑的物品 -> 拉黑结束的游戏时间
+    // 被忽略的物品 -> 忽略结束的游戏时间
     private val blacklistedItems: MutableMap<Item, Long> = mutableMapOf(),
     // 箱子位置 -> 最后访问时间（游戏tick）
     private val chestLastAccessTime: MutableMap<BlockPos, Long> = mutableMapOf(),
@@ -157,7 +157,7 @@ data class CopperGolemDeepMemory(
         }
 
         /**
-         * 判断黑名单项是否已过期
+         * 判断忽略项是否已过期
          */
         private fun isBlacklistExpired(endTime: Long, currentGameTime: Long): Boolean {
             return currentGameTime >= endTime
@@ -258,7 +258,7 @@ data class CopperGolemDeepMemory(
     }
 
     /**
-     * 检查物品是否有记忆（未被拉黑且存在记忆）
+     * 检查物品是否有记忆（未被忽略且存在记忆）
      * 用于决定是否优先拾取该物品
      */
     fun hasChestForItem(item: Item): Boolean {
@@ -267,12 +267,12 @@ data class CopperGolemDeepMemory(
 
     /**
      * 获取某个物品记忆中的目标箱子
-     * 如果物品被拉黑或没有记忆，返回null
+     * 如果物品被忽略或没有记忆，返回null
      * 
      * @param item 要查询的物品
      * @param currentPos 当前位置（用于验证范围）
-     * @param horizontalRange 水平搜索范围
-     * @param verticalRange 垂直搜索范围
+    * @param horizontalRange 水平搜索距离
+    * @param verticalRange 垂直搜索距离
      * @param matchMode 物品匹配模式（用于决定是否使用tag匹配）
      */
     fun getChestPosForItem(
@@ -312,7 +312,7 @@ data class CopperGolemDeepMemory(
     }
 
     /**
-     * 检查物品是否被拉黑
+     * 检查物品是否被忽略
      */
     fun isItemBlocked(item: Item, currentGameTime: Long): Boolean {
         val blacklistEndTime = blacklistedItems[item] ?: return false
@@ -326,14 +326,14 @@ data class CopperGolemDeepMemory(
     }
 
     /**
-     * 将物品加入黑名单
+     * 将物品加入忽略列表
      */
     fun blockItem(item: Item, currentGameTime: Long) {
         blacklistedItems[item] = currentGameTime + BLACKLIST_DURATION_TICKS
     }
 
     /**
-     * 获取当前所有被拉黑的物品集合（自动清理过期项）
+     * 获取当前所有被忽略的物品集合（自动清理过期项）
      */
     fun getBlockedItems(currentGameTime: Long): Set<Item> {
         clearExpiredBlacklist(currentGameTime)
@@ -341,7 +341,7 @@ data class CopperGolemDeepMemory(
     }
 
     /**
-     * 清除所有过期的黑名单
+     * 清除所有过期的忽略记录
      */
     fun clearExpiredBlacklist(currentGameTime: Long) {
         blacklistedItems.entries.removeIf { (_, endTime) ->

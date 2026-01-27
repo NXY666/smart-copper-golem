@@ -34,8 +34,8 @@ import org.nxy.smartcoppergolem.memory.CopperGolemDeepMemory.Companion.ALLOWED_I
 import org.nxy.smartcoppergolem.memory.ModMemoryModuleTypes
 import org.nxy.smartcoppergolem.util.BlockVisibilityChecker
 import org.nxy.smartcoppergolem.util.ContainerHelper
-import org.nxy.smartcoppergolem.util.MobPathSearcher.HORIZONTAL_INTERACTION_RANGE
-import org.nxy.smartcoppergolem.util.MobPathSearcher.VERTICAL_INTERACTION_RANGE
+import org.nxy.smartcoppergolem.util.MobPathSearcher.HORIZONTAL_INTERACTION_DISTANCE
+import org.nxy.smartcoppergolem.util.MobPathSearcher.VERTICAL_INTERACTION_DISTANCE
 import org.nxy.smartcoppergolem.util.MobUtil
 import org.nxy.smartcoppergolem.util.logger
 import java.util.*
@@ -128,14 +128,12 @@ private class StuckDetector {
  * 增强功能：
  * 1. 维护箱子→物品的记忆索引
  * 2. 手上物品在记忆中时，直接去目标箱子
- * 3. 放物品失败时，如果范围内没有可用箱子，返回铜箱子并拉黑该物品
+ * 3. 放物品失败时，如果范围内没有可用箱子，返回铜箱子并将该物品加入黑名单（后续运输时忽略该物品）
  */
 class SmartTransportItemsBetweenContainers(
     private val speedModifier: Float,
     private val sourceBlockType: Predicate<BlockState>,
     private val destinationBlockType: Predicate<BlockState>,
-    private val horizontalSearchDistance: Int,
-    private val verticalSearchDistance: Int,
     private val onTargetInteractionActions: Map<ContainerInteractionState, OnTargetReachedInteraction>,
     private val onStartTravellingCallback: Consumer<PathfinderMob>,
     private val shouldQueueForTarget: Predicate<TransportItemTarget>
@@ -169,7 +167,7 @@ class SmartTransportItemsBetweenContainers(
          */
         fun getItemMatchMode(): ItemMatchMode {
             return try {
-                ItemMatchMode.valueOf(ConfigAccessor.itemMatchMode)
+                ItemMatchMode.valueOf(ConfigAccessor.transportItemMatchMode)
             } catch (_: IllegalArgumentException) {
                 ItemMatchMode.ITEM_ONLY
             }
@@ -377,7 +375,7 @@ class SmartTransportItemsBetweenContainers(
         // 总是执行扫描，收集新的箱子
         val chunkPosList = ChunkPos.rangeClosed(
             ChunkPos(mob.blockPosition()),
-            Math.floorDiv(getHorizontalSearchDistance(mob), 16) + 1
+            Math.floorDiv(MobUtil.getHorizontalSearchDistance(mob), 16) + 1
         ).toList()
 
         for (chunkPos in chunkPosList) {
@@ -508,7 +506,7 @@ class SmartTransportItemsBetweenContainers(
         // 总是执行扫描，收集新的箱子
         val chunkPosList = ChunkPos.rangeClosed(
             ChunkPos(mob.blockPosition()),
-            Math.floorDiv(getHorizontalSearchDistance(mob), 16) + 1
+            Math.floorDiv(MobUtil.getHorizontalSearchDistance(mob), 16) + 1
         ).toList()
 
         for (chunkPos in chunkPosList) {
@@ -548,9 +546,9 @@ class SmartTransportItemsBetweenContainers(
             val item = mob.mainHandItem.item
             val currentGameTime = level.gameTime
 
-            // 检查是否被拉黑
+            // 检查是否在忽略列表中
             if (memory.isItemBlocked(item, currentGameTime)) {
-                // 物品被拉黑，返回铜箱子
+                // 物品在忽略列表中，返回铜箱子
                 hasTransportFailed = true
                 setChestHistory(mob, historyChests)
                 return scanSourceBlock(level, mob)
@@ -560,8 +558,8 @@ class SmartTransportItemsBetweenContainers(
             val rememberedChest = memory.getChestPosForItem(
                 item,
                 mob.blockPosition(),
-                getHorizontalSearchDistance(mob),
-                getVerticalSearchDistance(mob),
+                MobUtil.getHorizontalSearchDistance(mob),
+                MobUtil.getVerticalSearchDistance(mob),
                 getItemMatchMode()
             )
             rememberedChest?.let { rememberedChest ->
@@ -620,8 +618,8 @@ class SmartTransportItemsBetweenContainers(
             // 如果找到在互动范围内的箱子，直接使用
             if (
                 isWithinTargetDistance(
-                    HORIZONTAL_INTERACTION_RANGE.toDouble(),
-                    VERTICAL_INTERACTION_RANGE.toDouble(),
+                    HORIZONTAL_INTERACTION_DISTANCE.toDouble(),
+                    VERTICAL_INTERACTION_DISTANCE.toDouble(),
                     target, level,
                     mob.boundingBox, mobCenterPos
                 )
@@ -842,7 +840,7 @@ class SmartTransportItemsBetweenContainers(
             if (
                 isWithinTargetDistance(
                     getInteractionRange(mob),
-                    VERTICAL_INTERACTION_RANGE.toDouble(),
+                    VERTICAL_INTERACTION_DISTANCE.toDouble(),
                     target,
                     level,
                     mob.boundingBox,
@@ -928,20 +926,12 @@ class SmartTransportItemsBetweenContainers(
     }
 
     private fun getTargetSearchArea(mob: PathfinderMob): AABB {
-        val i = getHorizontalSearchDistance(mob)
+        val i = MobUtil.getHorizontalSearchDistance(mob)
         return AABB(mob.blockPosition()).inflate(
             i.toDouble(),
-            getVerticalSearchDistance(mob).toDouble(),
+            MobUtil.getVerticalSearchDistance(mob).toDouble(),
             i.toDouble()
         )
-    }
-
-    private fun getHorizontalSearchDistance(mob: PathfinderMob): Int {
-        return if (mob.isPassenger) 1 else horizontalSearchDistance
-    }
-
-    private fun getVerticalSearchDistance(mob: PathfinderMob): Int {
-        return if (mob.isPassenger) 1 else verticalSearchDistance
     }
 
     private fun getVisitedPositions(mob: PathfinderMob): Set<GlobalPos> {
@@ -1135,7 +1125,7 @@ class SmartTransportItemsBetweenContainers(
             }
         }
 
-        val verticalInteractionRange = ConfigAccessor.verticalInteractionRange.toDouble()
+        val verticalInteractionRange = ConfigAccessor.pathfindingVerticalInteractionDistance.toDouble()
         val mobCenterPos = MobUtil.getCenterPosition(mob)
         val mobEyePos = mob.eyePosition
 
@@ -1177,7 +1167,7 @@ class SmartTransportItemsBetweenContainers(
         if (
             !isWithinTargetDistance(
                 CLOSE_ENOUGH_TO_CONTINUE_INTERACTING_DISTANCE,
-                ConfigAccessor.verticalInteractionRange.toDouble(),
+                ConfigAccessor.pathfindingVerticalInteractionDistance.toDouble(),
                 target,
                 level,
                 mob.boundingBox,
@@ -1190,7 +1180,7 @@ class SmartTransportItemsBetweenContainers(
             ticksSinceReachingTarget++
             onTargetInteraction(target, mob)
 
-            if (ticksSinceReachingTarget >= ConfigAccessor.targetInteractionTime) {
+            if (ticksSinceReachingTarget >= ConfigAccessor.transportTargetInteractionTime) {
                 doReachedTargetInteraction(
                     mob, target,
                     { mob, container -> tryPickupItems(mob, container) },
@@ -1366,7 +1356,7 @@ class SmartTransportItemsBetweenContainers(
         if (remainItemStack.isEmpty) {
             // 成功放置
             if (isFailToTransportItems()) {
-                // 成功放回铜箱子，拉黑该物品
+                // 成功放回铜箱子，标记该物品为忽略
                 val item = originalItem.item
                 val memory = getOrCreateDeepMemory(mob)
                 memory.blockItem(item, gameTime)
@@ -1418,11 +1408,11 @@ class SmartTransportItemsBetweenContainers(
 
                 if (result.isEmpty) {
                     // 拾取第一个物品
-                    val j = minOf(itemStack.count, ConfigAccessor.transportedItemMaxStackSize)
+                    val j = minOf(itemStack.count, ConfigAccessor.transportItemMaxStackSize)
                     result = container.removeItem(i, j)
 
                     // 如果已经达到限制，直接返回
-                    if (result.count >= ConfigAccessor.transportedItemMaxStackSize ||
+                    if (result.count >= ConfigAccessor.transportItemMaxStackSize ||
                         result.count >= result.maxStackSize
                     ) {
                         return result
@@ -1434,7 +1424,7 @@ class SmartTransportItemsBetweenContainers(
                     if (canStack) {
                         // 计算可以继续拾取的数量
                         val spaceLeft = minOf(
-                            ConfigAccessor.transportedItemMaxStackSize - result.count,
+                            ConfigAccessor.transportItemMaxStackSize - result.count,
                             result.maxStackSize - result.count
                         )
 
@@ -1444,7 +1434,7 @@ class SmartTransportItemsBetweenContainers(
                             result.count += pickedStack.count
 
                             // 如果已经达到限制，返回
-                            if (result.count >= ConfigAccessor.transportedItemMaxStackSize ||
+                            if (result.count >= ConfigAccessor.transportItemMaxStackSize ||
                                 result.count >= result.maxStackSize
                             ) {
                                 return result
@@ -1498,7 +1488,7 @@ class SmartTransportItemsBetweenContainers(
         // 这确保了即使玩家提前取走物品导致行为提前中止，容器仍会被正确关闭
         val currentTarget = target
         if (currentTarget != null && state == TransportItemState.INTERACTING &&
-            ticksSinceReachingTarget in 1 until ConfigAccessor.targetInteractionTime &&
+            ticksSinceReachingTarget in 1 until ConfigAccessor.transportTargetInteractionTime &&
             interactionState != null
         ) {
             try {
@@ -1506,7 +1496,7 @@ class SmartTransportItemsBetweenContainers(
                 onTargetInteractionActions[interactionState]?.accept(
                     mob,
                     currentTarget,
-                    ConfigAccessor.targetInteractionTime
+                    ConfigAccessor.transportTargetInteractionTime
                 )
             } catch (_: Exception) {
                 // 忽略关闭回调异常
@@ -1535,9 +1525,9 @@ class SmartTransportItemsBetweenContainers(
     }
 
     /**
-     * 当无法返回铜箱子时进入冷却
-     * 不拉黑物品，保留手中物品，冷却后重新尝试
-     */
+    * 当无法返回铜箱子时进入冷却。
+    * 不将物品标记为忽略，保留手中物品，冷却后重新尝试
+    */
     private fun enterCooldownWhenCannotReturnToSource(mob: PathfinderMob) {
         stopTargetingCurrentTarget(mob)
         mob.brain.setMemory(MemoryModuleType.TRANSPORT_ITEMS_COOLDOWN_TICKS, IDLE_COOLDOWN_TICKS)

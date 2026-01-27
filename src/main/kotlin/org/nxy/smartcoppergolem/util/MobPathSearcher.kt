@@ -14,8 +14,8 @@ import kotlin.math.min
 
 
 object MobPathSearcher {
-    val HORIZONTAL_INTERACTION_RANGE: Int get() = ConfigAccessor.horizontalInteractionRange
-    val VERTICAL_INTERACTION_RANGE: Int get() = ConfigAccessor.verticalInteractionRange
+    val HORIZONTAL_INTERACTION_DISTANCE: Int get() = ConfigAccessor.pathfindingHorizontalInteractionDistance
+    val VERTICAL_INTERACTION_DISTANCE: Int get() = ConfigAccessor.pathfindingVerticalInteractionDistance
 
     fun findInteractablePos(
         targetBlockPos: BlockPos,
@@ -27,14 +27,14 @@ object MobPathSearcher {
         val collectResult = collect(
             mob, targetBlockPos,
             targetBlockPos.offset(
-                -HORIZONTAL_INTERACTION_RANGE,
-                -VERTICAL_INTERACTION_RANGE,
-                -HORIZONTAL_INTERACTION_RANGE
+                -HORIZONTAL_INTERACTION_DISTANCE,
+                -VERTICAL_INTERACTION_DISTANCE,
+                -HORIZONTAL_INTERACTION_DISTANCE
             ),
             targetBlockPos.offset(
-                HORIZONTAL_INTERACTION_RANGE,
-                VERTICAL_INTERACTION_RANGE,
-                HORIZONTAL_INTERACTION_RANGE
+                HORIZONTAL_INTERACTION_DISTANCE,
+                VERTICAL_INTERACTION_DISTANCE,
+                HORIZONTAL_INTERACTION_DISTANCE
             )
         ) ?: return emptyList()
 

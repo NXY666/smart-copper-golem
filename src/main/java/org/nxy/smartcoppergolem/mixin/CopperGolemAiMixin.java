@@ -28,7 +28,7 @@ import org.nxy.smartcoppergolem.util.ContainerHelper;
 import org.nxy.smartcoppergolem.SmartTransportItemsBetweenContainers;
 import org.nxy.smartcoppergolem.memory.SyncMemoryWithNearbyCopperGolems;
 import org.nxy.smartcoppergolem.TransportItemTarget;
-import org.nxy.smartcoppergolem.config.ConfigManager;
+import org.nxy.smartcoppergolem.config.ConfigAccessor;
 import org.nxy.smartcoppergolem.memory.ModMemoryModuleTypes;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
@@ -51,12 +51,6 @@ public abstract class CopperGolemAiMixin {
 
 	@Unique
 	private static final float SPEED_MULTIPLIER_WHEN_IDLING = 1.0F;
-
-	@Unique
-	private static final int TRANSPORT_ITEM_HORIZONTAL_SEARCH_RADIUS = 32;
-
-	@Unique
-	private static final int TRANSPORT_ITEM_VERTICAL_SEARCH_RADIUS = 16;
 
 	@Unique
 	private static final int TICK_TO_START_ON_REACHED_INTERACTION = 1;
@@ -150,8 +144,6 @@ public abstract class CopperGolemAiMixin {
 						SPEED_MULTIPLIER_WHEN_IDLING,
 						TRANSPORT_ITEM_SOURCE_BLOCK,
 						TRANSPORT_ITEM_DESTINATION_BLOCK,
-						TRANSPORT_ITEM_HORIZONTAL_SEARCH_RADIUS,
-						TRANSPORT_ITEM_VERTICAL_SEARCH_RADIUS,
 						getTargetReachedInteractions(),
 						onTravelling(),
 						shouldQueueForTarget()
@@ -209,7 +201,7 @@ public abstract class CopperGolemAiMixin {
 					if (soundEvent != null) {
 						copperGolem.playSound(soundEvent);
 					}
-				} else if (ticksSinceReachingTarget == ConfigManager.getConfig().getTransport().getTargetInteractionTime()) {
+				} else if (ticksSinceReachingTarget == ConfigAccessor.getTransportTargetInteractionTime()) {
 					// x ticks: 关闭容器
 					ContainerHelper.stopOpen(container, copperGolem);
 					copperGolem.clearOpenedChestPos();

@@ -33,11 +33,13 @@ class ConfigScreen(private val parent: Screen?) : Screen(Component.translatable(
 
     // 组件引用
     private lateinit var list: ConfigList
-    private lateinit var targetInteractionTimeEditBox: IntEditBox
-    private lateinit var transportedItemMaxStackSizeSlider: IntSlider
-    private lateinit var itemMatchModeCycleButton: CycleButton<String>
-    private lateinit var horizontalInteractionRangeSlider: IntSlider
-    private lateinit var verticalInteractionRangeSlider: IntSlider
+    private lateinit var transportTargetInteractionTimeEditBox: IntEditBox
+    private lateinit var transportItemMaxStackSizeSlider: IntSlider
+    private lateinit var transportItemMatchModeCycleButton: CycleButton<String>
+    private lateinit var pathfindingHorizontalSearchRangeSlider: IntSlider
+    private lateinit var pathfindingVerticalSearchRangeSlider: IntSlider
+    private lateinit var pathfindingHorizontalInteractionDistanceSlider: IntSlider
+    private lateinit var pathfindingVerticalInteractionDistanceSlider: IntSlider
     private lateinit var memoryBlacklistDurationTicksEditBox: LongEditBox
     private lateinit var memoryChestExpirationTicksEditBox: LongEditBox
     private lateinit var memorySyncCooldownTicksEditBox: LongEditBox
@@ -71,11 +73,11 @@ class ConfigScreen(private val parent: Screen?) : Screen(Component.translatable(
             Component.translatable("config.section.transport.desc")
         )
 
-        targetInteractionTimeEditBox = IntEditBox(editingConfig.transport.targetInteractionTime) {
+        transportTargetInteractionTimeEditBox = IntEditBox(editingConfig.transport.targetInteractionTime) {
             editingConfig.transport.targetInteractionTime = it
         }
         // 验证：最小值为10（与 ConfigManager.validate 保持一致）
-        setValidator(targetInteractionTimeEditBox) {
+        setValidator(transportTargetInteractionTimeEditBox) {
             val v = editingConfig.transport.targetInteractionTime
             if (v < 10) return@setValidator Component.translatable("config.error.min_interaction_time")
             null
@@ -83,14 +85,14 @@ class ConfigScreen(private val parent: Screen?) : Screen(Component.translatable(
         list.addOption(
             Component.translatable("config.transport.target_interaction_time.label"),
             Component.translatable("config.transport.target_interaction_time.tooltip"),
-            targetInteractionTimeEditBox
+            transportTargetInteractionTimeEditBox
         )
 
-        transportedItemMaxStackSizeSlider = IntSlider(1, 64, editingConfig.transport.transportedItemMaxStackSize) {
-            editingConfig.transport.transportedItemMaxStackSize = it
+        transportItemMaxStackSizeSlider = IntSlider(1, 64, editingConfig.transport.itemMaxStackSize) {
+            editingConfig.transport.itemMaxStackSize = it
         }
-        setValidator(transportedItemMaxStackSizeSlider) {
-            val v = editingConfig.transport.transportedItemMaxStackSize
+        setValidator(transportItemMaxStackSizeSlider) {
+            val v = editingConfig.transport.itemMaxStackSize
             if (v <= 0) return@setValidator Component.translatable("config.error.min_transport_item")
             if (v > 64) return@setValidator Component.translatable("config.error.max_transport_item")
             null
@@ -98,7 +100,7 @@ class ConfigScreen(private val parent: Screen?) : Screen(Component.translatable(
         list.addOption(
             Component.translatable("config.transport.max_stack_size.label"),
             Component.translatable("config.transport.max_stack_size.tooltip"),
-            transportedItemMaxStackSizeSlider
+            transportItemMaxStackSizeSlider
         )
 
         val itemMatchOption = CycleOption(
@@ -115,8 +117,8 @@ class ConfigScreen(private val parent: Screen?) : Screen(Component.translatable(
             },
             onChange = { value -> editingConfig.transport.itemMatchMode = value }
         )
-        itemMatchModeCycleButton = itemMatchOption.button
-        setValidator(itemMatchModeCycleButton) {
+        transportItemMatchModeCycleButton = itemMatchOption.button
+        setValidator(transportItemMatchModeCycleButton) {
             val v = editingConfig.transport.itemMatchMode
             val valid = setOf("EXACT", "ITEM_ONLY", "CATEGORY")
             if (v !in valid) return@setValidator Component.translatable("config.error.invalid_match_mode")
@@ -125,7 +127,7 @@ class ConfigScreen(private val parent: Screen?) : Screen(Component.translatable(
         list.addOption(
             Component.translatable("config.transport.match_mode.label"),
             Component.translatable("config.transport.match_mode.tooltip"),
-            itemMatchModeCycleButton
+            transportItemMatchModeCycleButton
         )
 
         // --- 寻路 ---
@@ -134,36 +136,68 @@ class ConfigScreen(private val parent: Screen?) : Screen(Component.translatable(
             Component.translatable("config.section.pathfinding.desc")
         )
 
-        horizontalInteractionRangeSlider =
-            IntSlider(1, 5, editingConfig.pathfinding.horizontalInteractionRange) {
-                editingConfig.pathfinding.horizontalInteractionRange = it
+        pathfindingHorizontalSearchRangeSlider =
+            IntSlider(1, 256, editingConfig.pathfinding.horizontalSearchDistance) {
+                editingConfig.pathfinding.horizontalSearchDistance = it
             }
-        setValidator(horizontalInteractionRangeSlider) {
-            val v = editingConfig.pathfinding.horizontalInteractionRange
-            if (v < 1) return@setValidator Component.translatable("config.error.min_horizontal_range")
-            if (v > 5) return@setValidator Component.translatable("config.error.max_horizontal_range")
+        setValidator(pathfindingHorizontalSearchRangeSlider) {
+            val v = editingConfig.pathfinding.horizontalSearchDistance
+            if (v < 1) return@setValidator Component.translatable("config.error.min_horizontal_search_distance")
+            if (v > 256) return@setValidator Component.translatable("config.error.max_horizontal_search_distance")
             null
         }
         list.addOption(
-            Component.translatable("config.pathfinding.horizontal_range.label"),
-            Component.translatable("config.pathfinding.horizontal_range.tooltip"),
-            horizontalInteractionRangeSlider
+            Component.translatable("config.pathfinding.horizontal_search_distance.label"),
+            Component.translatable("config.pathfinding.horizontal_search_distance.tooltip"),
+            pathfindingHorizontalSearchRangeSlider
         )
 
-        verticalInteractionRangeSlider =
-            IntSlider(1, 10, editingConfig.pathfinding.verticalInteractionRange) {
-                editingConfig.pathfinding.verticalInteractionRange = it
+        pathfindingVerticalSearchRangeSlider =
+            IntSlider(1, 128, editingConfig.pathfinding.verticalSearchDistance) {
+                editingConfig.pathfinding.verticalSearchDistance = it
             }
-        setValidator(verticalInteractionRangeSlider) {
-            val v = editingConfig.pathfinding.verticalInteractionRange
-            if (v < 1) return@setValidator Component.translatable("config.error.min_vertical_range")
-            if (v > 10) return@setValidator Component.translatable("config.error.max_vertical_range")
+        setValidator(pathfindingVerticalSearchRangeSlider) {
+            val v = editingConfig.pathfinding.verticalSearchDistance
+            if (v < 1) return@setValidator Component.translatable("config.error.min_vertical_search_distance")
+            if (v > 128) return@setValidator Component.translatable("config.error.max_vertical_search_distance")
             null
         }
         list.addOption(
-            Component.translatable("config.pathfinding.vertical_range.label"),
-            Component.translatable("config.pathfinding.vertical_range.tooltip"),
-            verticalInteractionRangeSlider
+            Component.translatable("config.pathfinding.vertical_search_distance.label"),
+            Component.translatable("config.pathfinding.vertical_search_distance.tooltip"),
+            pathfindingVerticalSearchRangeSlider
+        )
+
+        pathfindingHorizontalInteractionDistanceSlider =
+            IntSlider(1, 5, editingConfig.pathfinding.horizontalInteractionDistance) {
+                editingConfig.pathfinding.horizontalInteractionDistance = it
+            }
+        setValidator(pathfindingHorizontalInteractionDistanceSlider) {
+            val v = editingConfig.pathfinding.horizontalInteractionDistance
+            if (v < 1) return@setValidator Component.translatable("config.error.min_horizontal_interaction_distance")
+            if (v > 5) return@setValidator Component.translatable("config.error.max_horizontal_interaction_distance")
+            null
+        }
+        list.addOption(
+            Component.translatable("config.pathfinding.horizontal_interaction_distance.label"),
+            Component.translatable("config.pathfinding.horizontal_interaction_distance.tooltip"),
+            pathfindingHorizontalInteractionDistanceSlider
+        )
+
+        pathfindingVerticalInteractionDistanceSlider =
+            IntSlider(1, 10, editingConfig.pathfinding.verticalInteractionDistance) {
+                editingConfig.pathfinding.verticalInteractionDistance = it
+            }
+        setValidator(pathfindingVerticalInteractionDistanceSlider) {
+            val v = editingConfig.pathfinding.verticalInteractionDistance
+            if (v < 1) return@setValidator Component.translatable("config.error.min_vertical_interaction_distance")
+            if (v > 10) return@setValidator Component.translatable("config.error.max_vertical_interaction_distance")
+            null
+        }
+        list.addOption(
+            Component.translatable("config.pathfinding.vertical_interaction_distance.label"),
+            Component.translatable("config.pathfinding.vertical_interaction_distance.tooltip"),
+            pathfindingVerticalInteractionDistanceSlider
         )
 
         // --- 记忆配置 ---
@@ -374,7 +408,7 @@ class ConfigScreen(private val parent: Screen?) : Screen(Component.translatable(
             .create(0, 0, 150, 20, label) { _, value -> onChange(value) }
 
         fun setValue(v: String) {
-            button.setValue(v)
+            button.value = v
         }
     }
 
@@ -491,12 +525,14 @@ class ConfigScreen(private val parent: Screen?) : Screen(Component.translatable(
 
         // 刷新所有组件显示为默认值
         try {
-            targetInteractionTimeEditBox.value = editingConfig.transport.targetInteractionTime.toString()
-            transportedItemMaxStackSizeSlider.setIntValue(editingConfig.transport.transportedItemMaxStackSize)
-            itemMatchModeCycleButton.setValue(editingConfig.transport.itemMatchMode)
+            transportTargetInteractionTimeEditBox.value = editingConfig.transport.targetInteractionTime.toString()
+            transportItemMaxStackSizeSlider.setIntValue(editingConfig.transport.itemMaxStackSize)
+            transportItemMatchModeCycleButton.value = editingConfig.transport.itemMatchMode
 
-            horizontalInteractionRangeSlider.setIntValue(editingConfig.pathfinding.horizontalInteractionRange)
-            verticalInteractionRangeSlider.setIntValue(editingConfig.pathfinding.verticalInteractionRange)
+            pathfindingHorizontalInteractionDistanceSlider.setIntValue(editingConfig.pathfinding.horizontalInteractionDistance)
+            pathfindingVerticalInteractionDistanceSlider.setIntValue(editingConfig.pathfinding.verticalInteractionDistance)
+            pathfindingHorizontalSearchRangeSlider.setIntValue(editingConfig.pathfinding.horizontalSearchDistance)
+            pathfindingVerticalSearchRangeSlider.setIntValue(editingConfig.pathfinding.verticalSearchDistance)
 
             memoryBlacklistDurationTicksEditBox.value = editingConfig.memory.blacklistDurationTicks.toString()
             memoryChestExpirationTicksEditBox.value = editingConfig.memory.chestExpirationTicks.toString()

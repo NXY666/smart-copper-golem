@@ -2,57 +2,58 @@
 
 English | [简体中文](README-zh_CN.md) | [繁體中文](README-zh_TW.md)
 
-> This mod is implemented entirely on the server side, the client only provides Mod Menu integration.
+> This mod is implemented entirely server-side; the client only provides Mod Menu integration.
 
-Mojang has been extremely cautious in "benefiting players," with the Copper Golem being a prime example.
+Mojang has been extremely cautious when it comes to "benefiting players," and the Copper Golem is a prime example.
 
-They were designed to only transfer a minimal number of items through simple iteration from one chest to another. Once encountering an item that cannot be stored, they would fall into an endless loop.
+They were designed to move only a very small number of items from one chest to another with a simple traversal. Once they encounter an item that cannot be inserted, they can fall into an endless loop.
 
-Smart Copper Golem aims to endow Copper Golems with more intelligent behavior, enabling them to manage items more efficiently.
+Smart Copper Golem aims to give Copper Golems smarter behavior so they can manage items more efficiently.
 
 ## Features
 
 ### 🧠 Deep Memory
 
-- When accessing a chest, the Copper Golem remembers the types of items inside that chest.
-- When picking up items from the copper chest, the Copper Golem prioritizes selecting items that exist in its memory.
-- Copper Golems exchange memories with each other, making collective learning more efficient.
+* When accessing a chest, a Copper Golem remembers the types of items inside.
+* When picking up items from the Copper Chest, a Copper Golem prioritizes items that exist in its memory.
+* Copper Golems exchange memories with each other, making collective learning more efficient.
 
 ### 🎯 Target Selection
 
-- Copper Golems can now open barrels and shulker boxes.
-- New item matching mode "Similar Items," allowing Copper Golems to place similar items (such as wool of different colors, anvils with varying levels of damage, etc.) into the same chest.
-- When the item in hand cannot be placed into any target chest, the Copper Golem will return the item to the copper chest and ignore that item for a period of time.
-- Copper Golems no longer aimlessly iterate in sequence; they now follow the following priority strategy:
-	- Prioritize chests within interaction range that can be interacted with (especially effective for compact item storage systems)
-	- Prioritize chests in memory associated with that item
+* Copper Golems can now open Barrels and Shulker Boxes.
+* A new item matching mode, **"Similar Items,"** allows Copper Golems to put similar items (e.g., different-colored wool, anvils with different damage levels, etc.) into the same chest.
+* When the item in hand cannot be inserted into any target container, a Copper Golem will return it to the Copper Chest and ignore that item for a period of time.
+* Copper Golems no longer cycle through targets aimlessly. They now follow these priority rules:
+
+  * Prefer interactable containers within interaction range (especially effective in compact storage builds)
+  * Prefer remembered containers that are relevant to the item
 
 ### 🗺️ Pathfinding & Interaction
 
-- Utilizes a more robust pathfinding solution with higher fault tolerance compared to the vanilla version, capable of handling complex terrain.
-- More precise interactivity checks; chests that players can interact with, Copper Golems can also interact with.
+* Uses a more robust pathfinding approach than vanilla, with higher fault tolerance for complex terrain.
+* More accurate interaction checks—if a player can interact with a container, a Copper Golem can too.
 
 ### ⚙️ Configuration
 
-Some core parameters can be adjusted via the configuration file:
+Some core parameters can be adjusted via the config file:
 
-- Interaction range, maximum number of items to carry.
-- Item matching mode.
-- Search range, memory decay time, ignore duration, etc.
+* Search range, interaction range.
+* Item matching mode. maximum items carried.
+* Memory decay time, ignore duration, and more.
 
 ## Compatibility
 
-This mod completely refactors the Copper Golem's behavior, so it may be incompatible with other mods that also modify Copper Golems.
+This mod fully reworks Copper Golem behavior, so it may be incompatible with other mods that also modify Copper Golems.
 
-If your server relies on Copper Golems for redstone machines, those machines may not work properly.
+If your server relies on Copper Golems for redstone machines, those machines may not function properly.
 
 ## Configuration 
 
-The configuration file is located at `config/smart-copper-golem.json`.
+The config file is located at `config/smart-copper-golem.json`.
 
-- **Method 1: Directly edit the JSON file**
-- **Method 2: Visual configuration via [Mod Menu](https://modrinth.com/mod/modmenu)**
+* **Option 1: Edit the JSON file directly**
+* **Option 2: Configure visually via [Mod Menu](https://modrinth.com/mod/modmenu)**
 
-## Open Source License
+## License
 
-- AGPL-3.0 (see the `LICENSE.txt` file in the project for details)
+* AGPL-3.0 (see `LICENSE.txt` in the project for details)

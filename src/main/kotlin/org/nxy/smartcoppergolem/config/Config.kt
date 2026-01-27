@@ -29,7 +29,7 @@ data class TransportConfig(
     var targetInteractionTime: Int = 60,
 
     /** 运输物品的最大堆叠数量 */
-    var transportedItemMaxStackSize: Int = 16,
+    var itemMaxStackSize: Int = 16,
 
     /**
      * 物品匹配模式
@@ -46,7 +46,7 @@ data class TransportConfig(
  */
 @Serializable
 data class MemoryConfig(
-    /** 物品拉黑时长（游戏tick） */
+    /** 物品忽略时长（游戏tick） */
     var blacklistDurationTicks: Long = 6000L,
 
     /** 箱子记忆过期时间（游戏tick，一个游戏日 = 24000 ticks） */
@@ -65,9 +65,15 @@ data class MemoryConfig(
  */
 @Serializable
 data class PathfindingConfig(
-    /** 水平交互范围（方块） */
-    var horizontalInteractionRange: Int = 1,
+    /** 运输目标搜索水平距离（方块） */
+    var horizontalSearchDistance: Int = 32,
 
-    /** 垂直交互范围（方块） */
-    var verticalInteractionRange: Int = 2
+    /** 运输目标搜索垂直距离（方块） */
+    var verticalSearchDistance: Int = 16,
+    
+    /** 水平交互距离（方块） */
+    var horizontalInteractionDistance: Int = 1,
+
+    /** 垂直交互距离（方块） */
+    var verticalInteractionDistance: Int = 2,
 )
