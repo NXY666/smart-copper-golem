@@ -558,8 +558,6 @@ class SmartTransportItemsBetweenContainers(
             val rememberedChest = memory.getChestPosForItem(
                 item,
                 mob.blockPosition(),
-                MobUtil.getHorizontalSearchDistance(mob),
-                MobUtil.getVerticalSearchDistance(mob),
                 getItemMatchMode()
             )
             rememberedChest?.let { rememberedChest ->

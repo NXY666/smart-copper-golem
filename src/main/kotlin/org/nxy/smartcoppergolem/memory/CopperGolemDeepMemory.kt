@@ -142,21 +142,6 @@ data class CopperGolemDeepMemory(
         )
 
         /**
-         * 判断箱子是否在指定范围内
-         */
-        private fun isChestInRange(
-            chestPos: BlockPos,
-            currentPos: BlockPos,
-            horizontalRange: Int,
-            verticalRange: Int
-        ): Boolean {
-            val dx = abs(chestPos.x - currentPos.x)
-            val dy = abs(chestPos.y - currentPos.y)
-            val dz = abs(chestPos.z - currentPos.z)
-            return dx <= horizontalRange && dy <= verticalRange && dz <= horizontalRange
-        }
-
-        /**
          * 判断忽略项是否已过期
          */
         private fun isBlacklistExpired(endTime: Long, currentGameTime: Long): Boolean {
@@ -271,33 +256,25 @@ data class CopperGolemDeepMemory(
      * 
      * @param item 要查询的物品
      * @param currentPos 当前位置（用于验证范围）
-    * @param horizontalRange 水平搜索距离
-    * @param verticalRange 垂直搜索距离
      * @param matchMode 物品匹配模式（用于决定是否使用tag匹配）
      */
     fun getChestPosForItem(
         item: Item,
         currentPos: BlockPos,
-        horizontalRange: Int,
-        verticalRange: Int,
         matchMode: SmartTransportItemsBetweenContainers.Companion.ItemMatchMode
     ): BlockPos? {
         val candidateChests = mutableSetOf<BlockPos>()
 
         // 先尝试精确匹配，获取所有可能的箱子
         val exactMatches = itemChestMap.getValuesByKey(item)
-        candidateChests.addAll(exactMatches.filter {
-            isChestInRange(it, currentPos, horizontalRange, verticalRange)
-        })
+        candidateChests.addAll(exactMatches)
 
         // 如果是CATEGORY模式，也尝试tag匹配
         if (matchMode == SmartTransportItemsBetweenContainers.Companion.ItemMatchMode.CATEGORY) {
             for (tag in ALLOWED_ITEM_CATEGORY_TAGS) {
                 if (BuiltInRegistries.ITEM.wrapAsHolder(item).`is`(tag)) {
                     val tagMatches = tagChestMap.getValuesByKey(tag)
-                    candidateChests.addAll(tagMatches.filter {
-                        isChestInRange(it, currentPos, horizontalRange, verticalRange)
-                    })
+                    candidateChests.addAll(tagMatches)
                 }
             }
         }
