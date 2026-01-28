@@ -50,8 +50,8 @@ Mojang 在“造福玩家”方面显得极其谨慎，铜傀儡就是一个典�
 
 配置文件位于 `config/smart-copper-golem.json`。
 
-- **方式一：直接编辑 JSON 文件**
-- **方式二：通过 [Mod Menu](https://modrinth.com/mod/modmenu) 可视化配置**
+- **方式一**：直接编辑 JSON 文件
+- **方式二**：通过 [Mod Menu](https://modrinth.com/mod/modmenu) 可视化配置
 
 ## 开源协议
 

@@ -51,8 +51,8 @@ Mojang 在「造福玩家」方面顯得極其謹慎，銅魔像就是一個典�
 
 設定檔位於 `config/smart-copper-golem.json`。
 
-* **方式一：直接編輯 JSON 檔案**
-* **方式二：透過 [Mod Menu](https://modrinth.com/mod/modmenu) 視覺化設定**
+* **方式一**：直接編輯 JSON 檔案
+* **方式二**：透過 [Mod Menu](https://modrinth.com/mod/modmenu) 視覺化設定
 
 ## 開源授權
 

@@ -21,7 +21,7 @@ Smart Copper Golem aims to give Copper Golems smarter behavior so they can manag
 ### 🎯 Target Selection
 
 * Copper Golems can now open Barrels and Shulker Boxes.
-* A new item matching mode, **"Similar Items,"** allows Copper Golems to put similar items (e.g., different-colored wool, anvils with different damage levels, etc.) into the same chest.
+* A new item matching mode, "Similar Items," allows Copper Golems to put similar items (e.g., different-colored wool, anvils with different damage levels, etc.) into the same chest.
 * When the item in hand cannot be inserted into any target container, a Copper Golem will return it to the Copper Chest and ignore that item for a period of time.
 * Copper Golems no longer cycle through targets aimlessly. They now follow these priority rules:
 
@@ -51,8 +51,8 @@ If your server relies on Copper Golems for redstone machines, those machines may
 
 The config file is located at `config/smart-copper-golem.json`.
 
-* **Option 1: Edit the JSON file directly**
-* **Option 2: Configure visually via [Mod Menu](https://modrinth.com/mod/modmenu)**
+* **Option 1**: Edit the JSON file directly
+* **Option 2**: Configure visually via [Mod Menu](https://modrinth.com/mod/modmenu)
 
 ## License
 
