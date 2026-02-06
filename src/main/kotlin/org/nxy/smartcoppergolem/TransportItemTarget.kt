@@ -7,9 +7,8 @@ import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.ChestBlock
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
-import net.minecraft.world.level.pathfinder.Path
+import org.nxy.smartcoppergolem.pathfinding.PathResearcher
 import org.nxy.smartcoppergolem.util.MobPathSearcher
-import org.nxy.smartcoppergolem.util.OfflineSegmentPathfinder
 import org.nxy.smartcoppergolem.util.logger
 
 enum class TransportItemState {
@@ -37,13 +36,11 @@ data class TransportItemTarget(
     // 路径相关字段（延迟计算，调用 activatePath 后才会初始化）
     var walkPos: BlockPos? = null
         private set
-    var isResearching: Boolean = false
+    var pathResearcher: PathResearcher? = null
         private set
-    var researchCandidates: Set<BlockPos>? = null
-        private set
-    var researchWaitTicks: Int = 0
-    var researchAttempts: Int = 0
-    var lastResearchPath: Path? = null
+    
+    val isResearching: Boolean
+        get() = pathResearcher != null
 
     /**
      * 激活路径计算
@@ -92,7 +89,7 @@ data class TransportItemTarget(
                 nodeCount
             )
             this.walkPos = pathTarget
-            this.isResearching = false
+            this.pathResearcher = null
         } else {
             // 路径不可达，启动边走边研究模式
             logger.debug(
@@ -103,9 +100,7 @@ data class TransportItemTarget(
                 path.endNode
             )
             this.walkPos = pathTarget
-            this.isResearching = true
-            this.researchCandidates = candidatesSet
-            this.lastResearchPath = path
+            this.pathResearcher = PathResearcher(pos, candidatesSet, path)
         }
 
         return true
@@ -116,104 +111,28 @@ data class TransportItemTarget(
      * @return 研究结果
      */
     fun continueResearching(mob: PathfinderMob): ResearchResult {
-        // 检查是否已经可达
-        val lastPath = lastResearchPath
-        if (lastPath != null && lastPath.canReach()) {
-            // 路径已可达，完成研究
-            logger.debug(
-                "[continueResearching] 箱子 {} 路径（从 {} 到 {}，共 {} 点）已可达，第 {} 轮研究完成。",
-                pos, mob.blockPosition(),
-                lastPath.target,
-                lastPath.nodeCount,
-                researchAttempts
-            )
-            // 调用 completeResearch 更新状态
-            completeResearch(lastPath.target)
-            return ResearchResult.COMPLETED
+        val researcher = pathResearcher ?: return ResearchResult.FAILED
+        val result = researcher.continueResearching(mob)
+
+        when (result) {
+            ResearchResult.COMPLETED -> {
+                // 研究完成，更新 walkPos 并清理 researcher
+                val completedPos = researcher.getCompletedWalkPos()
+                if (completedPos != null) {
+                    this.walkPos = completedPos
+                }
+                this.pathResearcher = null
+            }
+            ResearchResult.FAILED -> {
+                // 研究失败，清理 researcher
+                this.pathResearcher = null
+            }
+            ResearchResult.CONTINUING -> {
+                // 继续研究，不做处理
+            }
         }
 
-        // 递减等待计数器
-        if (researchWaitTicks > 0) {
-            researchWaitTicks--
-            return ResearchResult.CONTINUING
-        }
-
-        // 检查是否达到最大尝试次数
-        if (researchAttempts >= 5) {
-            logger.debug(
-                "[continueResearching] 箱子 {} 研究失败，已尝试 {} 次。",
-                pos,
-                researchAttempts
-            )
-            return ResearchResult.FAILED
-        }
-
-        // 创建下一段路径
-        val candidates = researchCandidates ?: run {
-            logger.debug("[continueResearching] 箱子 {} 研究没有候选点，第 {} 轮研究失败。", pos, researchAttempts + 1)
-            return ResearchResult.FAILED
-        }
-
-        val offlineFinder = OfflineSegmentPathfinder(mob)
-        val nextStartPos = lastPath?.endNode?.asBlockPos() ?: mob.blockPosition()
-
-        val nextPath = offlineFinder.findFrom(
-            startPos = nextStartPos,
-            targets = candidates,
-            maxSearchDistance = 64.0f,
-            reachRange = 0,
-            visitedMultiplier = 1.0f
-        )
-
-        if (nextPath == null) {
-            logger.debug(
-                "[continueResearching] 箱子 {} 无法创建下一段路径，第 {} 轮研究失败。",
-                pos,
-                researchAttempts + 1
-            )
-            return ResearchResult.FAILED
-        }
-
-        // 检查新路径是否过短且不可达
-        if (nextPath.nodeCount < 8 && !nextPath.canReach()) {
-            logger.debug(
-                "[continueResearching] 箱子 {} 新路径（从 {} 到 {}，共 {} 点）过短且不可达，第 {} 轮研究失败。",
-                pos, nextStartPos,
-                nextPath.endNode,
-                nextPath.nodeCount,
-                researchAttempts + 1
-            )
-            return ResearchResult.FAILED
-        }
-
-        // 更新研究状态
-        researchAttempts++
-        lastResearchPath = nextPath
-        // 随机等待 10-20 tick
-        researchWaitTicks = (10..20).random()
-
-        logger.debug(
-            "[continueResearching] 箱子 {} 新路径（从 {} 到 {}，共 {} 点）正常，等待 {} tick 后继续第 {} 轮研究。",
-            pos, nextStartPos,
-            nextPath.endNode,
-            nextPath.nodeCount,
-            researchWaitTicks,
-            researchAttempts
-        )
-
-        return ResearchResult.CONTINUING
-    }
-
-    /**
-     * 完成路径研究
-     * 当研究模式下路径可达时调用，更新相关状态
-     * @param reachedWalkPos 已可达的行走位置
-     */
-    private fun completeResearch(reachedWalkPos: BlockPos) {
-        this.walkPos = reachedWalkPos
-        this.isResearching = false
-        this.researchCandidates = null
-        this.lastResearchPath = null
+        return result
     }
 
     companion object {

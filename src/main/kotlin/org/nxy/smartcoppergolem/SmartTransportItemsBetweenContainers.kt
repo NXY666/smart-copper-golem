@@ -250,9 +250,9 @@ class SmartTransportItemsBetweenContainers(
 
         val updated = updateTargetIfInvalid(level, mob, gameTime)
 
-        val currentTarget = target ?: return
-
         if (!updated) {
+            val currentTarget = target ?: return
+
             when (state) {
                 TransportItemState.QUEUING -> onQueuingForTarget(currentTarget, level, mob)
                 TransportItemState.TRAVELLING -> onTravelToTarget(currentTarget, level, mob)
@@ -751,14 +751,14 @@ class SmartTransportItemsBetweenContainers(
         val currentTarget = target ?: return false
 
         val isWanted = isWantedBlock(mob, currentTarget.targetBlockState)
-        val hasNotChanged = targetHasNotChanged(level, currentTarget)
+        val hasChanged = targetHasChanged(level, currentTarget)
         val isBlocked = isTargetBlocked(level, currentTarget)
         val isMismatchMemory = isTargetMismatchInRecentMemory(mob, currentTarget)
 
-        if (!isWanted || !hasNotChanged || isBlocked || isMismatchMemory) {
+        if (!isWanted || hasChanged || isBlocked || isMismatchMemory) {
             logger.debug(
                 "[isTargetValid] 目标 {} 不再有效。 isWanted: {}, hasChanged: {}, isBlocked: {}, isMismatchMemory: {}",
-                currentTarget.pos, isWanted, !hasNotChanged, isBlocked, isMismatchMemory
+                currentTarget.pos, isWanted, hasChanged, isBlocked, isMismatchMemory
             )
             return false
         }
@@ -906,8 +906,8 @@ class SmartTransportItemsBetweenContainers(
         return true
     }
 
-    private fun targetHasNotChanged(level: Level, target: TransportItemTarget): Boolean {
-        return target.targetBlockEntity == level.getBlockEntity(target.pos)
+    private fun targetHasChanged(level: Level, target: TransportItemTarget): Boolean {
+        return target.targetBlockEntity != level.getBlockEntity(target.pos)
     }
 
     private fun getConnectedTargets(level: Level, target: TransportItemTarget): Stream<TransportItemTarget> {
@@ -1106,20 +1106,10 @@ class SmartTransportItemsBetweenContainers(
         // 处理路径研究逻辑
         if (target.isResearching) {
             val researchResult = target.continueResearching(mob)
-            when (researchResult) {
-                ResearchResult.FAILED -> {
-                    markVisitedBlockPosAsUnreachable(mob, level, target.pos)
-                    stopTargetingCurrentTarget(mob)
-                    return
-                }
-
-                ResearchResult.COMPLETED -> {
-                    // 研究完成，已更新 target
-                }
-
-                ResearchResult.CONTINUING -> {
-                    // 继续研究，继续正常移动
-                }
+            if (researchResult == ResearchResult.FAILED) {
+                markVisitedBlockPosAsUnreachable(mob, level, target.pos)
+                stopTargetingCurrentTarget(mob)
+                return
             }
         }
 
@@ -1138,6 +1128,7 @@ class SmartTransportItemsBetweenContainers(
             )
             && isAnotherMobInteractingWithTarget(level, target)
         ) {
+            // 如果在开始排队的范围内，并且有其他实体正在与目标交互，开始排队
             startQueuing(mob)
         } else if (
             isWithinTargetDistance(
@@ -1150,8 +1141,10 @@ class SmartTransportItemsBetweenContainers(
             )
             && canSeeAnyTargetSide(level, mobEyePos, target)
         ) {
+            // 如果在开始交互的范围内，并且能看到目标，开始交互
             startOnReachedTargetInteraction(target, mob)
         } else {
+            // 否则继续前往目标
             walkTowardsTarget(mob)
         }
     }
