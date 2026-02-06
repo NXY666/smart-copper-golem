@@ -1,15 +1,23 @@
 package org.nxy.smartcoppergolem
 
 import net.minecraft.core.BlockPos
+import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.Container
 import net.minecraft.world.entity.PathfinderMob
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.ChestBlock
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.level.pathfinder.Path
+import net.minecraft.world.level.pathfinder.WalkNodeEvaluator
+import net.minecraft.world.phys.AABB
+import net.minecraft.world.phys.Vec3
 import org.nxy.smartcoppergolem.pathfinding.PathResearcher
+import org.nxy.smartcoppergolem.util.BlockVisibilityChecker
 import org.nxy.smartcoppergolem.util.MobPathSearcher
+import org.nxy.smartcoppergolem.util.MobUtil
 import org.nxy.smartcoppergolem.util.logger
+import kotlin.math.max
 
 enum class TransportItemState {
     TRAVELLING,
@@ -133,6 +141,105 @@ data class TransportItemTarget(
         }
 
         return result
+    }
+
+    /**
+     * 检查是否在指定距离内
+     */
+    fun isWithinDistance(
+        horizontalDistance: Double,
+        verticalReach: Double,
+        level: Level,
+        mobBoundingBox: AABB,
+        mobCenterPos: Vec3
+    ): Boolean {
+        val mobCenterBoundingBox =
+            AABB.ofSize(mobCenterPos, mobBoundingBox.xsize, mobBoundingBox.ysize, mobBoundingBox.zsize)
+        return this.targetBlockState
+            .getCollisionShape(level, this.pos)
+            .bounds()
+            .inflate(horizontalDistance, 0.5 + verticalReach, horizontalDistance)
+            .move(this.pos)
+            .intersects(mobCenterBoundingBox)
+    }
+
+    /**
+     * 检查是否可以从指定位置看到目标
+     */
+    fun canSeeAnySideFrom(
+        level: Level,
+        fromPos: Vec3
+    ): Boolean {
+        if (level !is ServerLevel) return false
+
+        return BlockVisibilityChecker.isBlockVisible(
+            level, fromPos,
+            this.pos,
+            this.targetBlockState
+        )
+    }
+
+    /**
+     * 验证前往目标的路径是否有效
+     */
+    fun isTravellingPathValid(
+        level: Level,
+        mob: PathfinderMob,
+        targetPath: Path?,
+        interactionRange: Double,
+        verticalInteractionDistance: Double
+    ): Boolean {
+        // 如果在天上，迟早会掉下去，先不验证路径
+        // 研究期间跳过详细验证，避免过早标记不可达
+        if (!MobUtil.canUpdatePath(mob) || this.isResearching) {
+            return true
+        }
+
+        if (targetPath == null) {
+            logger.debug(
+                "[isTravellingPathValid] 无法创建 {} 到 {} 的路径。",
+                mob.blockPosition(),
+                this.pos
+            )
+            return false
+        }
+
+        // 还没到呢，先走再说
+        if (targetPath.nodeCount > 8) {
+            return true
+        }
+
+        // 从后往前检查路径上的每个节点是否可达
+        for (i in targetPath.nodeCount - 1 downTo max(targetPath.nextNodeIndex - 1, 0)) {
+            val nodeBlockPos = targetPath.getNodePos(i)
+            val nodeFeetY = WalkNodeEvaluator.getFloorLevel(level, nodeBlockPos)
+            val nodeFeetPos = nodeBlockPos.center.horizontal().add(0.0, nodeFeetY, 0.0)
+
+            val nodeCenterPos = MobUtil.addMobHalfBbHeightToFeetPosY(mob, nodeFeetPos)
+            val nodeEyePos = MobUtil.addMobEyeHeightToFeetPosY(mob, nodeFeetPos)
+
+            if (
+                isWithinDistance(
+                    interactionRange,
+                    verticalInteractionDistance,
+                    level,
+                    mob.boundingBox,
+                    nodeCenterPos
+                )
+                && canSeeAnySideFrom(level, nodeEyePos)
+            ) {
+                return true
+            }
+        }
+
+        logger.debug(
+            "[isTravellingPathValid] 从 {} 到 {} 的路径无法与目标 {} 正常互动。",
+            mob.blockPosition(),
+            targetPath.endNode?.asBlockPos(),
+            this.pos
+        )
+
+        return false
     }
 
     companion object {

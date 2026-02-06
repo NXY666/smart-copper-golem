@@ -24,7 +24,6 @@ import net.minecraft.world.level.block.entity.BaseContainerBlockEntity
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.level.block.state.properties.ChestType
 import net.minecraft.world.level.pathfinder.Path
-import net.minecraft.world.level.pathfinder.WalkNodeEvaluator
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import org.apache.commons.lang3.function.TriConsumer
@@ -43,7 +42,6 @@ import java.util.function.BiConsumer
 import java.util.function.Consumer
 import java.util.function.Predicate
 import java.util.stream.Stream
-import kotlin.math.max
 
 private const val STUCK_CONSECUTIVE_THRESHOLD = 3
 private const val STUCK_TOTAL_THRESHOLD = 9
@@ -615,10 +613,10 @@ class SmartTransportItemsBetweenContainers(
 
             // 如果找到在互动范围内的箱子，直接使用
             if (
-                isWithinTargetDistance(
+                target.isWithinDistance(
                     HORIZONTAL_INTERACTION_DISTANCE.toDouble(),
                     VERTICAL_INTERACTION_DISTANCE.toDouble(),
-                    target, level,
+                    level,
                     mob.boundingBox, mobCenterPos
                 )
                 && BlockVisibilityChecker.isBlockVisible(level, mob, chestPos)
@@ -794,7 +792,12 @@ class SmartTransportItemsBetweenContainers(
 
         if (
             state == TransportItemState.TRAVELLING &&
-            !isTravellingPathValid(level, mob, currentTarget)
+            !currentTarget.isTravellingPathValid(
+                level, mob,
+                getOrCreateTargetPath(mob),
+                getInteractionRange(mob),
+                VERTICAL_INTERACTION_DISTANCE.toDouble()
+            )
         ) {
             logger.debug("[isTargetValid] 前往目标 {} 的路径不再有效。", currentTarget.pos)
             markVisitedBlockPosAsUnreachable(mob, level, currentTarget.pos)
@@ -802,62 +805,6 @@ class SmartTransportItemsBetweenContainers(
         }
 
         return true
-    }
-
-    private fun isTravellingPathValid(level: Level, mob: PathfinderMob, target: TransportItemTarget): Boolean {
-        // 如果在天上，迟早会掉下去，先不验证路径
-        // 研究期间跳过详细验证，避免过早标记不可达
-        if (!MobUtil.canUpdatePath(mob) || target.isResearching) {
-            return true
-        }
-
-        val targetPath = getOrCreateTargetPath(mob)
-        if (targetPath == null) {
-            logger.debug(
-                "[isTravellingPathValid] 无法创建 {} 到 {} 的路径。",
-                mob.blockPosition(),
-                target.pos
-            )
-            return false
-        }
-
-        // 还没到呢，先走再说
-        if (targetPath.nodeCount > 8) {
-            return true
-        }
-
-        // 从后往前检查路径上的每个节点是否可达
-        for (i in targetPath.nodeCount - 1 downTo max(targetPath.nextNodeIndex - 1, 0)) {
-            val nodeBlockPos = targetPath.getNodePos(i)
-            val nodeFeetY = WalkNodeEvaluator.getFloorLevel(level, nodeBlockPos)
-            val nodeFeetPos = nodeBlockPos.center.horizontal().add(0.0, nodeFeetY, 0.0)
-
-            val nodeCenterPos = MobUtil.addMobHalfBbHeightToFeetPosY(mob, nodeFeetPos)
-            val nodeEyePos = MobUtil.addMobEyeHeightToFeetPosY(mob, nodeFeetPos)
-
-            if (
-                isWithinTargetDistance(
-                    getInteractionRange(mob),
-                    VERTICAL_INTERACTION_DISTANCE.toDouble(),
-                    target,
-                    level,
-                    mob.boundingBox,
-                    nodeCenterPos
-                )
-                && canSeeAnyTargetSide(level, nodeEyePos, target)
-            ) {
-                return true
-            }
-        }
-
-        logger.debug(
-            "[isTravellingPathValid] 从 {} 到 {} 的路径无法与目标 {} 正常互动。",
-            mob.blockPosition(),
-            targetPath.endNode?.asBlockPos(),
-            target.pos
-        )
-
-        return false
     }
 
     private fun isTargetBlocked(level: Level, target: TransportItemTarget): Boolean {
@@ -996,39 +943,6 @@ class SmartTransportItemsBetweenContainers(
         else CLOSE_ENOUGH_TO_START_INTERACTING_DISTANCE
     }
 
-    private fun isWithinTargetDistance(
-        horizontalDistance: Double,
-        verticalReach: Double,
-        target: TransportItemTarget,
-        level: Level,
-        mobBoundingBox: AABB,
-        mobCenterPos: Vec3
-    ): Boolean {
-        val mobCenterBoundingBox =
-            AABB.ofSize(mobCenterPos, mobBoundingBox.xsize, mobBoundingBox.ysize, mobBoundingBox.zsize)
-        return target.targetBlockState
-            .getCollisionShape(level, target.pos)
-            .bounds()
-            .inflate(horizontalDistance, 0.5 + verticalReach, horizontalDistance)
-            .move(target.pos)
-            .intersects(mobCenterBoundingBox)
-    }
-
-    private fun canSeeAnyTargetSide(
-        level: Level,
-        fromPos: Vec3,
-        toTarget: TransportItemTarget
-    ): Boolean {
-        // 使用BlockVisibilityChecker工具类进行视线检测
-        if (level !is ServerLevel) return false
-
-        return BlockVisibilityChecker.isBlockVisible(
-            level, fromPos,
-            toTarget.pos,
-            toTarget.targetBlockState
-        )
-    }
-
     private fun isAnotherMobInteractingWithTarget(level: Level, target: TransportItemTarget): Boolean {
         return getConnectedTargets(level, target).anyMatch(shouldQueueForTarget)
     }
@@ -1118,10 +1032,9 @@ class SmartTransportItemsBetweenContainers(
         val mobEyePos = mob.eyePosition
 
         if (
-            isWithinTargetDistance(
+            target.isWithinDistance(
                 CLOSE_ENOUGH_TO_START_QUEUING_DISTANCE,
                 verticalInteractionRange,
-                target,
                 level,
                 mob.boundingBox,
                 mobCenterPos
@@ -1131,15 +1044,14 @@ class SmartTransportItemsBetweenContainers(
             // 如果在开始排队的范围内，并且有其他实体正在与目标交互，开始排队
             startQueuing(mob)
         } else if (
-            isWithinTargetDistance(
+            target.isWithinDistance(
                 CLOSE_ENOUGH_TO_START_INTERACTING_DISTANCE,
                 verticalInteractionRange,
-                target,
                 level,
                 mob.boundingBox,
                 mobCenterPos
             )
-            && canSeeAnyTargetSide(level, mobEyePos, target)
+            && target.canSeeAnySideFrom(level, mobEyePos)
         ) {
             // 如果在开始交互的范围内，并且能看到目标，开始交互
             startOnReachedTargetInteraction(target, mob)
@@ -1156,10 +1068,9 @@ class SmartTransportItemsBetweenContainers(
         gameTime: Long
     ) {
         if (
-            !isWithinTargetDistance(
+            !target.isWithinDistance(
                 CLOSE_ENOUGH_TO_CONTINUE_INTERACTING_DISTANCE,
                 ConfigAccessor.pathfindingVerticalInteractionDistance.toDouble(),
-                target,
                 level,
                 mob.boundingBox,
                 MobUtil.getCenterPosition(mob)
